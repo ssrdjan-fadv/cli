@@ -1,17 +1,16 @@
 import { join } from "https://deno.land/std@0.207.0/path/posix.ts";
 import { $ as shell } from "https://deno.land/x/dax@0.35.0/mod.ts";
 import { Command, EnumType } from "https://deno.land/x/cliffy@v1.0.0-rc.3/command/mod.ts";
+import { stringify } from "https://deno.land/std@0.207.0/yaml/mod.ts";
 import { 
   ArrayToTable, ArrayKV, StringArray, DEFAULT_TEMPLATE_REPOSITORY, FileError, escape, 
   AppType, EnvironmentType, PromptFunction, Value, enumValues, getTemplatePath, isPrimitive,
   SwitchConfig
 } from "../domain/types.ts";
 import { confirm, debug, echo, numberInput, select, title } from "../commands/cli.ts";
-import { listFiles } from "./fs.ts";
-import { loadYaml, stringify } from "./yaml.ts"; // Assuming these functions exist in a yaml.ts file
-import { cloneTemplate, templateFill } from "./template.ts"; // Assuming these functions exist in a template.ts file
+import { listFiles, loadYaml, cloneTemplate, templateFill } from "./fs.ts"; // Assuming these functions exist in a template.ts file
 
-export async function orgs(): Promise<StringArray> {
+async function orgs(): Promise<StringArray> {
   return (await shell`gh org list`.text()).split("\n");
 }
 
@@ -19,13 +18,13 @@ export async function orgList(): Promise<ArrayKV> {
   return ArrayToTable(await orgs());
 }
 
-export async function cloneRepository(repo: string, branch = "main", destinationFolder = ""): Promise<string[]> {
+async function cloneRepository(repo: string, branch = "main", destinationFolder = ""): Promise<string[]> {
   await shell`gh repo clone ${repo} ${destinationFolder} -- -b ${branch}`;
   await Deno.remove(join(destinationFolder, ".git"), { recursive: true });
   return listFiles(destinationFolder);
 }
 
-export async function reportIssue(config: SwitchConfig, failedFiles: FileError[]): Promise<void> {
+async function reportIssue(config: SwitchConfig, failedFiles: FileError[]): Promise<void> {
   const title = `Switch CLI Template Generation Failed - Project ${config.name}`;
   const body = `Failed to generate certain files, probable template issue?
 
@@ -43,10 +42,6 @@ ${failedFiles.map((f) => `- [ ] ${f.file} - ${escape(f.error)}`).join("\n")}`;
 
   await createIssue(DEFAULT_TEMPLATE_REPOSITORY, title, body, 'defect');
 }
-
-export const gitInit = (folder = '.') => shell`git init ${folder}`;
-export const createRepository = async (owner: string, repo: string) => 
-  await shell`gh repo create ${owner}/${repo} --internal`;
 
 export async function createOnboardingTicket(config: SwitchConfig): Promise<void> {
   title(`Creating onboarding ticket...`);
@@ -78,7 +73,7 @@ Onboarding Tasks Pending`;
   );
 }
 
-export async function createIssue(repo: string, title: string, body: string, label: string): Promise<void> {
+async function createIssue(repo: string, title: string, body: string, label: string): Promise<void> {
   await shell`gh issue create -R ${repo} --title ${title} --body ${body} --label ${label}`;
 }
 

@@ -8,7 +8,7 @@ import chalk from "npm:chalk";
 import { ArrayKV, StringArray } from "../domain/types.ts";
 
 // Assuming VERSION is defined elsewhere in your project
-declare const VERSION: string;
+const VERSION: string = "1.2.2";
 
 export const Cli = new Command()
   .name("switch")
@@ -22,8 +22,7 @@ export const Cli = new Command()
     },
   });
 
-export function displayBanner(version: string): void {
-  const banner = chalk.green(`
+const banner = chalk.green(`
    _____      ___________________ __   _______   ____
   / __/ | /| / /  _/_  __/ ___/ // /  / ___/ /  /  _/
  _\\ \\ | |/ |/ // /  / / / /__/ _  /  / /__/ /___/ /
@@ -33,10 +32,9 @@ export function displayBanner(version: string): void {
   const footer = `
 _____________________________________________________
 First Advantage                        -- Ship Faster
-${chalk.bgBlue(chalk.white(` v${version}-${Deno.build.os}-${Deno.build.arch} `))}
+${chalk.bgBlue(chalk.white(` v${VERSION}-${Deno.build.os}-${Deno.build.arch} `))}
 `;
   console.log(banner + footer);
-}
 
 export const title = (message: string): void => console.log(chalk.cyanBright(chalk.bold(`\n${message}\n`)));
 export const echo = (message: string): void => console.log(chalk.white(message));

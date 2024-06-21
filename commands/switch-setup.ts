@@ -27,7 +27,7 @@ function createOS(): OS {
   }
 
   async function where(arg: string): Promise<string> {
-    return run(CLI.which(), arg);
+    return await run(CLI.which(), arg);
   }
 
   async function run(cmd: string, arg: string): Promise<string> {
