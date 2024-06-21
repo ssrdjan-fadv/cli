@@ -3,32 +3,44 @@ import $ from "https://deno.land/x/dax/mod.ts";
 import chalk from "npm:chalk";
 import { title, echo, error } from "./cli.ts";
 
-const createOS = () => {
-  const CLI = {
+interface CLI {
+  which: () => string;
+  gh: () => string;
+  git: () => string;
+}
+
+interface OS {
+  find: (name: string, command: keyof CLI) => Promise<boolean>;
+}
+
+function createOS(): OS {
+  const CLI: CLI = {
     which: () => Deno.build.os === "windows" ? "where" : "which",
     gh: () => Deno.build.os === "windows" ? "GitHub.cli" : "gh",
     git: () => Deno.build.os === "windows" ? "Git.cli" : "git",
   };
 
-  const invokePackageManager = async () => {
+  async function invokePackageManager(): Promise<string> {
     if (Deno.build.os === "windows") return `"${await where("winget")}" install --id `;
     if (Deno.build.os === "darwin") return "brew install ";
     return "apt update && apt install ";
-  };
+  }
 
-  const where = async (arg: string) => await run(CLI.which(), arg);
+  async function where(arg: string): Promise<string> {
+    return run(CLI.which(), arg);
+  }
 
-  const run = async (cmd: string, arg: string): Promise<string> => {
+  async function run(cmd: string, arg: string): Promise<string> {
     try {
       return await $`${cmd} ${arg}`.text();
     } catch (_) {
       return "";
     }
-  };
+  }
 
-  const find = async (name: string, command: string) => {
-    const pathOfCommand = await where(command);
-    if (pathOfCommand.match(command)) {
+  async function find(name: string, command: keyof CLI): Promise<boolean> {
+    const pathOfCommand = await where(CLI[command]());
+    if (pathOfCommand.includes(CLI[command]())) {
       echo(chalk.green(`\n√ ${name}... Found @ ${pathOfCommand}`));
       return true;
     } else {
@@ -36,12 +48,12 @@ const createOS = () => {
       echo(`${await invokePackageManager()} ${CLI[command]()}`);
       return false;
     }
-  };
+  }
 
   return { find };
-};
+}
 
-export const createSwitchSetup = () => {
+export function createSwitchSetup(): Command {
   const command = new Command()
     .name("setup")
     .description("Performs a system check to locate pre-requisite dependencies.")
@@ -49,18 +61,18 @@ export const createSwitchSetup = () => {
 
   const OS = createOS();
 
-  const run = async () => {
-    title(`Checking System Configuration`);
-    let allFound = await OS.find('Git CLI', 'git');
-    allFound = (await OS.find('GitHub CLI', 'gh')) && allFound;
+  async function run(): Promise<void> {
+    title("Checking System Configuration");
+    const gitFound = await OS.find('Git CLI', 'git');
+    const ghFound = await OS.find('GitHub CLI', 'gh');
 
-    if (allFound) {
-      title(`👍 Excellent! You are all set - You can "Switch" now !\n`);
+    if (gitFound && ghFound) {
+      title("👍 Excellent! You are all set - You can 'Switch' now!\n");
     } else {
-      title(`⚠️ Caution! one or more dependencies were not found, please run the switch installer again!\n`);
+      title("⚠️ Caution! One or more dependencies were not found, please run the switch installer again!\n");
     }
-  };
+  }
 
   command.action(run);
   return command;
-};
+}
