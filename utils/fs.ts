@@ -3,7 +3,7 @@ import { join } from "https://deno.land/std@0.110.0/path/mod.ts";
 import { parse } from "https://deno.land/std@0.202.0/yaml/mod.ts";
 import { dirname } from "https://deno.land/std/path/mod.ts";
 import {FileError, StringArray} from "../domain/types.ts";
-import { echo, error, shell } from "./cli.ts";
+import { $ as shell } from "https://deno.land/x/dax@0.35.0/mod.ts"
 
 export const debug = (...args: unknown[]) => (process.env.DEBUG === 'true') ? console.log(...args) : null
 
@@ -135,22 +135,22 @@ export const formatBytes = (bytes: number, decimals = 2) => {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`
 }
 
-export const downloadFile = async (url: string, destinationFile: string): Promise<boolean> => {
-  let downloaded = false;
-  try {
-    const pb = shell.progress("Downloading ");
-    await pb.with(async () => {
-      const res = await fetch(url);
-      const file = await Deno.open(destinationFile, { create: true, write: true })
-      await res.body?.pipeTo(file.writable);
-    });
-    pb.finish();
-    downloaded = true
-  } catch (e) {
-    downloaded = false
-    error(e)
-  } finally {
-    echo(`Done: ${downloaded}`)
-  }
-  return downloaded;
-}
+// export const downloadFile = async (url: string, destinationFile: string): Promise<boolean> => {
+//   let downloaded = false;
+//   try {
+//     const pb = shell.progress("Downloading ");
+//     await pb.with(async () => {
+//       const res = await fetch(url);
+//       const file = await Deno.open(destinationFile, { create: true, write: true })
+//       await res.body?.pipeTo(file.writable);
+//     });
+//     pb.finish();
+//     downloaded = true
+//   } catch (e) {
+//     downloaded = false
+//     error(e)
+//   } finally {
+//     echo(`Done: ${downloaded}`)
+//   }
+//   return downloaded;
+// }

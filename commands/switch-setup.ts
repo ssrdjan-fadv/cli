@@ -1,7 +1,7 @@
 import { Command } from "https://deno.land/x/cliffy@v1.0.0-rc.3/command/mod.ts";
 import $ from "https://deno.land/x/dax/mod.ts";
 import chalk from "npm:chalk";
-import { title, echo, error } from "../utils/cli.ts";
+import { title, echo, error } from "./cli.ts";
 
 const createOS = () => {
   const CLI = {
@@ -41,7 +41,7 @@ const createOS = () => {
   return { find };
 };
 
-const createSwitchSetup = () => {
+export const createSwitchSetup = () => {
   const command = new Command()
     .name("setup")
     .description("Performs a system check to locate pre-requisite dependencies.")
@@ -65,5 +65,3 @@ const createSwitchSetup = () => {
 
   return command;
 };
-
-export { createSwitchSetup };

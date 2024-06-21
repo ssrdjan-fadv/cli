@@ -4,13 +4,8 @@ import { Confirm } from "https://deno.land/x/cliffy@v1.0.0-rc.3/prompt/confirm.t
 import { Input } from "https://deno.land/x/cliffy@v1.0.0-rc.3/prompt/input.ts";
 import { ValidateResult } from "https://deno.land/x/cliffy@v1.0.0-rc.3/prompt/_generic_prompt.ts";
 import { Number } from "https://deno.land/x/cliffy@v1.0.0-rc.3/prompt/number.ts";
-
-import $ from "https://deno.land/x/dax@0.35.0/mod.ts"
-
-import chalk from "npm:chalk"
-
 import {ArrayKV, StringArray} from "../domain/types.ts"
-export const shell = $
+import chalk from "npm:chalk"
 
 // safely handles circular references
 // deno-lint-ignore no-explicit-any

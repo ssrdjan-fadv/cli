@@ -1,4 +1,32 @@
-import { createSwitch } from "./commands/switch.ts";
+import { Command } from "https://deno.land/x/cliffy@v1.0.0-rc.3/command/mod.ts";
+import { banner, debug, echo } from "./commands/cli.ts";
+import { createSwitchSetup } from "./commands/switch-setup.ts";
+import { createSwitchInit } from "./commands/switch-init.ts";
 
 const VERSION = "1.2.2"; // You might want to import this from a separate file
-await createSwitch(VERSION).parse(Deno.args);
+
+banner(VERSION);
+
+const switchCommand = new Command()
+  .name("switch")
+  .description("The Command Line Shell for Switch Applications")
+  .version(VERSION)
+  .alias("sc");
+
+switchCommand.globalOption("-X", "Optional. Enables debug mode.", {
+  action: () => {
+    Deno.env.set("DEBUG", "true");
+    debug("Debug mode enabled.");
+  },
+});
+
+// Add subcommands
+switchCommand.command("setup", createSwitchSetup());
+switchCommand.command("init", createSwitchInit());
+
+// Default action when no subcommand is provided
+switchCommand.action(() => {
+  echo("Run switch --help for usage.");
+});
+
+switchCommand.parse(Deno.args);

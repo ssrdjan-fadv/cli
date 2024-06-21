@@ -1,9 +1,10 @@
 import { join } from "https://deno.land/std@0.207.0/path/posix.ts";
 
 import {ArrayToTable, ArrayKV, StringArray, DEFAULT_TEMPLATE_REPOSITORY, FileError, escape} from "../domain/types.ts";
-import {shell, title} from './cli.ts';
+import { title } from '../commands/cli.ts';
+import { $ as shell } from "https://deno.land/x/dax@0.35.0/mod.ts"
 import {listFiles} from "./fs.ts";
-import {SwitchConfig} from "../domain/switch-config.ts";
+import {SwitchConfig} from "../domain/types.ts";
 
 /// This async function looks up a list of GitHub Orgs via the `gh org list` command
 /// @returns StringArray

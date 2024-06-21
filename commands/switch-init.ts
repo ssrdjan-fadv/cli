@@ -1,16 +1,15 @@
 import { CommandOptions } from "https://deno.land/x/cliffy@v1.0.0-rc.3/command/mod.ts";
-import { DefaultSwitchConfig, SwitchConfig } from "../domain/switch-config.ts";
+import { DefaultSwitchConfig, SwitchConfig } from "../domain/types.ts";
 import { basename } from "https://deno.land/std@0.201.0/path/basename.ts";
-import { confirm, echo, title } from "../utils/cli.ts";
+import { confirm, echo, title } from "./cli.ts";
 import { exists, recursiveCopyFiles } from "../utils/fs.ts";
 import { createOnboardingTicket } from "../utils/github.ts";
 import chalk from "npm:chalk";
-import { AbortError } from "../domain/types.ts";
 import { join } from "https://deno.land/std@0.207.0/path/join.ts";
-import { AbstractSwitchCommand } from "./base.ts";
+import { createSwitchCommand } from "./base.ts";
 
-const createSwitchInit = () => {
-  const command = new AbstractSwitchCommand("init", "Enables your current project(folder) for the Switch Platform.");
+export const createSwitchInit = () => {
+  const command = createSwitchCommand("init", "Enables your current project(folder) for the Switch Platform.");
   command.alias("i");
 
   command.enableStandardOptions();
@@ -30,7 +29,7 @@ const createSwitchInit = () => {
     const overwrite = currentConfig
       ? await confirm(`This project/folder is already enabled with Switch. Overwrite configuration?`)
       : false;
-    if (currentConfig && !overwrite) throw new AbortError();
+    if (currentConfig && !overwrite) throw new Error();
 
     await command.validateStandardConfig(inputs, options, overwrite, currentConfig);
 
@@ -91,5 +90,3 @@ ${chalk.yellow("Step 3: ")}
 
   return command;
 };
-
-export { createSwitchInit };
