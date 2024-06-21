@@ -62,6 +62,5 @@ export const createSwitchSetup = () => {
   };
 
   command.action(run);
-
   return command;
 };
