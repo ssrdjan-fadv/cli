@@ -1,12 +1,17 @@
 import { Eta } from "https://deno.land/x/eta@v3.1.1/src/index.ts";
-import { join } from "https://deno.land/std@0.110.0/path/mod.ts";
+import { join, dirname } from "https://deno.land/std@0.207.0/path/mod.ts";
 import { parse } from "https://deno.land/std@0.202.0/yaml/mod.ts";
-import { dirname } from "https://deno.land/std/path/mod.ts";
-import {FileError, StringArray} from "../domain/types.ts";
-import { $ as shell } from "https://deno.land/x/dax@0.35.0/mod.ts"
+import { FileError, StringArray } from "../domain/types.ts";
+import { $ as shell } from "https://deno.land/x/dax@0.35.0/mod.ts";
 
-export const debug = (...args: unknown[]) => (process.env.DEBUG === 'true') ? console.log(...args) : null
+// Debug function to log messages when DEBUG environment variable is set to 'true'
+export const debug = (...args: unknown[]): void => {
+  if (Deno.env.get("DEBUG") === "true") {
+    console.log(...args);
+  }
+};
 
+// Check if a file or directory exists
 export async function exists(fileName: string): Promise<boolean> {
   try {
     await Deno.lstat(fileName);
@@ -16,72 +21,68 @@ export async function exists(fileName: string): Promise<boolean> {
   }
 }
 
+// List all files in a folder and its subfolders
 export async function listFiles(folder: string): Promise<string[]> {
   const files: string[] = [];
-  for await (const dirEntry of Deno.readDir(folder)) {
-    if (dirEntry.isFile) files.push(join(folder, dirEntry.name));
-    if (dirEntry.isDirectory) files.push(...await listFiles(join(folder, dirEntry.name)));
+  for await (const entry of Deno.readDir(folder)) {
+    const fullPath = join(folder, entry.name);
+    if (entry.isFile) {
+      files.push(fullPath);
+    } else if (entry.isDirectory) {
+      files.push(...await listFiles(fullPath));
+    }
   }
   return files;
 }
 
-// deno-lint-ignore no-explicit-any
-export const processName = (finalName: string, configData: any) =>
-  finalName.replace(/\[([^\]]+)\]/g,
-    (match: string, varName: string): string => configData[varName] || match)
+// Process a name by replacing placeholders with values from configData
+export const processName = (finalName: string, configData: Record<string, unknown>): string =>
+  finalName.replace(/\[([^\]]+)\]/g, (_, varName: string) => String(configData[varName] ?? _));
 
-export const getRelativeFilePath = (srcPath: string, srcFile: string) => {
-  const srcFileParts = srcFile.split(/\/|\\/).filter(p => p !== "" && p !== ".")
-  const excludeParts = srcPath.split(/\/|\\/).filter(p => p !== "" && p !== ".")
-  for (const excludePart of excludeParts) {
-    for (const srcPart of srcFileParts) {
-      if (excludePart === srcPart) {
-        srcFileParts.shift()
-      } else {
-        break
-      }
-    }
+// Get the relative file path between srcPath and srcFile
+export const getRelativeFilePath = (srcPath: string, srcFile: string): string => {
+  const srcFileParts = srcFile.split(/\/|\\/).filter(p => p !== "" && p !== ".");
+  const excludeParts = srcPath.split(/\/|\\/).filter(p => p !== "" && p !== ".");
+  
+  while (srcFileParts[0] === excludeParts[0]) {
+    srcFileParts.shift();
+    excludeParts.shift();
   }
-  return srcFileParts.join("/")
-}
+  
+  return srcFileParts.join("/");
+};
 
-/*
- * Template Folder: ~/.switch-cli/templates/...
- * Project Folder: ~/my-project/....
- * Sample Template: ~/.switch-cli/templates/[template-name]/[template]-main.ts
- */
+// Clone a template directory to a new location
 export const cloneTemplate = async (
   srcPath: string,
   newBasePath: string,
-  configData: object = {},
-  templateData: object | undefined,
-  excludeFiles?: string[]
-) => {
+  configData: Record<string, unknown> = {},
+  templateData: Record<string, unknown> | undefined,
+  excludeFiles: string[] = []
+): Promise<FileError[]> => {
   debug('Inside cloneTemplate - srcPath:', srcPath);
-  excludeFiles = excludeFiles || []; // Set to an empty array if undefined
-
   const srcFiles = await listFiles(srcPath);
   debug('srcFiles:', srcFiles);
 
-  const cloneFailedFiles = [];
+  const cloneFailedFiles: FileError[] = [];
   const isExcluded = (filePath: string, exclusionPatterns: string[]): boolean => {
     return exclusionPatterns.some(pattern => {
       const regExp = new RegExp(pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\//g, '\\/'));
       return regExp.test(filePath);
     });
   };
+
   for (const srcFile of srcFiles) {
     debug('srcFile:', srcFile);
-    // Normalize file paths to handle both forward and backward slashes
-    const normalizedSrcFile = srcFile.split("\\").join("/");
+    const normalizedSrcFile = srcFile.replace(/\\/g, "/");
     debug('Normalized srcFile:', normalizedSrcFile);
     debug('Excluded files:', excludeFiles);
 
-    // Check if the current file should be excluded using custom function
     if (isExcluded(normalizedSrcFile, excludeFiles)) {
       debug(`Excluding file: ${srcFile}`);
       continue;
     }
+
     const relativeFilePath = getRelativeFilePath(srcPath, srcFile);
     debug('relativeFilePath:', relativeFilePath);
     const finalName = processName(`${newBasePath}/${relativeFilePath}`, configData);
@@ -97,60 +98,43 @@ export const cloneTemplate = async (
   return cloneFailedFiles;
 };
 
-
+// Fill template files with provided data
 export async function templateFill(fileNames: StringArray, payload: unknown): Promise<FileError[]> {
-  const failedFiles: ({ file: string, error: Error })[] = [];
+  const failedFiles: FileError[] = [];
   const eta = new Eta({});
+
   for (const fileName of fileNames) {
     try {
       let fileContents = await Deno.readTextFile(fileName);
-      fileContents = await eta.renderStringAsync(fileContents, payload as object);
+      fileContents = await eta.renderStringAsync(fileContents, payload as Record<string, unknown>);
       await Deno.writeTextFile(fileName, fileContents);
     } catch (e) {
-      failedFiles.push({ file: fileName, error: e })
+      failedFiles.push({ file: fileName, error: e instanceof Error ? e : new Error(String(e)) });
     }
   }
-  return failedFiles
+  return failedFiles;
 }
 
-export async function loadYaml<T>(file: string): Promise<T> {
-  let object!: T;
-  const fileExists = await exists(file);
-  if (fileExists) {
-    const blob = await Deno.readTextFile(file);
-    object = parse(blob) as T;
+// Load a YAML file and parse its contents
+export async function loadYaml<T>(file: string): Promise<T | undefined> {
+  if (await exists(file)) {
+    const content = await Deno.readTextFile(file);
+    return parse(content) as T;
   }
-  return object;
+  return undefined;
 }
 
-export const recursiveCopyFiles = async (source: string, destination: string) =>
+// Recursively copy files from source to destination
+export const recursiveCopyFiles = async (source: string, destination: string): Promise<void> => {
   await shell`cp -r ${source} ${destination}`;
+};
 
-export const formatBytes = (bytes: number, decimals = 2) => {
-  if (!+bytes) return '0 Bytes'
-  const k = 1024
-  const dm = decimals < 0 ? 0 : decimals
-  const sizes = ['Bytes', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`
-}
-
-// export const downloadFile = async (url: string, destinationFile: string): Promise<boolean> => {
-//   let downloaded = false;
-//   try {
-//     const pb = shell.progress("Downloading ");
-//     await pb.with(async () => {
-//       const res = await fetch(url);
-//       const file = await Deno.open(destinationFile, { create: true, write: true })
-//       await res.body?.pipeTo(file.writable);
-//     });
-//     pb.finish();
-//     downloaded = true
-//   } catch (e) {
-//     downloaded = false
-//     error(e)
-//   } finally {
-//     echo(`Done: ${downloaded}`)
-//   }
-//   return downloaded;
-// }
+// Format bytes to a human-readable string
+export const formatBytes = (bytes: number, decimals = 2): string => {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ['Bytes', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+};

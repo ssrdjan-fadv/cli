@@ -7,8 +7,7 @@ import { Checkbox } from "https://deno.land/x/cliffy@v1.0.0-rc.3/prompt/checkbox
 import chalk from "npm:chalk";
 import { ArrayKV, StringArray } from "../domain/types.ts";
 
-// Assuming VERSION is defined elsewhere in your project
-const VERSION: string = "1.2.2";
+const VERSION = "1.2.2";
 
 export const Cli = new Command()
   .name("switch")
@@ -29,54 +28,22 @@ const banner = chalk.green(`
 /___/ |__/|__/___/ /_/  \\___/_//_/   \\___/____/___/
 `);
 
-  const footer = `
+const footer = `
 _____________________________________________________
 First Advantage                        -- Ship Faster
 ${chalk.bgBlue(chalk.white(` v${VERSION}-${Deno.build.os}-${Deno.build.arch} `))}
 `;
-  console.log(banner + footer);
 
+console.log(banner + footer);
+
+// Utility functions for CLI output and interaction
 export const title = (message: string): void => console.log(chalk.cyanBright(chalk.bold(`\n${message}\n`)));
 export const echo = (message: string): void => console.log(chalk.white(message));
 export const error = (message: string): void => console.log(chalk.red(message));
 export const confirm = async (message: string): Promise<boolean> => await Confirm.prompt(chalk.yellow(message));
 export const select = async (message: string, options: ArrayKV) => await Select.prompt({ message, options });
 export const numberInput = async (message: string) => await Number.prompt({ message });
-
-function safeStringify(obj: unknown, indent = 2): string {
-  const cache = new Set();
-  return JSON.stringify(
-    obj,
-    (_, value) => {
-      if (typeof value === "object" && value !== null) {
-        if (cache.has(value)) {
-          return undefined; // Duplicate reference found, discard key
-        }
-        cache.add(value);
-      }
-      return value;
-    },
-    indent
-  );
-}
-
-export function debug(...data: unknown[]): void {
-  if (Deno.env.get("DEBUG") === "true") {
-    const content = data.map((d) => {
-      if (typeof d === "object" && d !== null) {
-        if (d instanceof Error) {
-          return `${d.message}\n${d.stack}`;
-        }
-        return safeStringify(d);
-      }
-      return String(d);
-    });
-    console.log("[DEBUG] -", ...content.map(c => chalk.gray(c)));
-  }
-}
-
 export const multiSelect = async (message: string, options: ArrayKV) => await Checkbox.prompt({ message, options });
-
 export const textInput = async (message: string, mandatory = false) => 
   await Input.prompt({
     message,
@@ -84,7 +51,6 @@ export const textInput = async (message: string, mandatory = false) =>
     info: false,
     validate: (value: string) => !mandatory || !!value,
   });
-
 export const suggestUntil = async (message: string, suggestions: StringArray) => 
   await Input.prompt({
     message,
@@ -93,3 +59,19 @@ export const suggestUntil = async (message: string, suggestions: StringArray) =>
     suggestions,
     validate: (value: string) => !!value,
   });
+
+// Debug function for logging when DEBUG environment variable is set to 'true'
+export function debug(...data: unknown[]): void {
+  if (Deno.env.get("DEBUG") === "true") {
+    const content = data.map((d) => {
+      if (typeof d === "object" && d !== null) {
+        if (d instanceof Error) {
+          return `${d.message}\n${d.stack}`;
+        }
+        return JSON.stringify(d, null, 2);
+      }
+      return String(d);
+    });
+    console.log("[DEBUG] -", ...content.map(c => chalk.gray(c)));
+  }
+}

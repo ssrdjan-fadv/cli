@@ -1,13 +1,19 @@
+// plugins/switch_default.ts
+
 import { Command } from "https://deno.land/x/cliffy@v1.0.0-rc.3/command/mod.ts";
-import { echo } from "./cli.ts";
+import { PluginCommand } from "../domain/plugin-interface.ts";
+import { echo } from "../commands/cli.ts";
 
-// Default action when no subcommand is provided
-export const createSwitchDefault = () => {
-  const command = new Command()
-    .name("setup")
-    .description("Performs a system check to locate pre-requisite dependencies.")
-    .example("switch setup", "Checks the system configuration and installs any missing dependencies.");
-
-  command.action(echo("Run switch --help for usage."));
-  return command;
+const switchDefaultPlugin: PluginCommand = {
+  name: "default",
+  description: "Default action when no subcommand is provided.",
+  createCommand: () => {
+    return new Command()
+      .description("Default action when no subcommand is provided.")
+      .action(() => {
+        echo("Run switch --help for usage.");
+      });
+  },
 };
+
+export default switchDefaultPlugin;

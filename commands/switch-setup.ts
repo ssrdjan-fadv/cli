@@ -1,7 +1,10 @@
+// plugins/switch_setup.ts
+
 import { Command } from "https://deno.land/x/cliffy@v1.0.0-rc.3/command/mod.ts";
+import { PluginCommand } from "../domain/plugin-interface.ts";
 import $ from "https://deno.land/x/dax/mod.ts";
 import chalk from "npm:chalk";
-import { title, echo, error } from "./cli.ts";
+import { title, echo, error } from "../commands/cli.ts";
 
 interface CLI {
   which: () => string;
@@ -53,26 +56,31 @@ function createOS(): OS {
   return { find };
 }
 
-export function createSwitchSetup(): Command {
-  const command = new Command()
-    .name("setup")
-    .description("Performs a system check to locate pre-requisite dependencies.")
-    .example("switch setup", "Checks the system configuration and installs any missing dependencies.");
+const switchSetupPlugin: PluginCommand = {
+  name: "setup",
+  description: "Performs a system check to locate pre-requisite dependencies.",
+  createCommand: () => {
+    const command = new Command()
+      .description("Performs a system check to locate pre-requisite dependencies.")
+      .example("switch setup", "Checks the system configuration and installs any missing dependencies.");
 
-  const OS = createOS();
+    const OS = createOS();
 
-  async function run(): Promise<void> {
-    title("Checking System Configuration");
-    const gitFound = await OS.find('Git CLI', 'git');
-    const ghFound = await OS.find('GitHub CLI', 'gh');
+    async function run(): Promise<void> {
+      title("Checking System Configuration");
+      const gitFound = await OS.find('Git CLI', 'git');
+      const ghFound = await OS.find('GitHub CLI', 'gh');
 
-    if (gitFound && ghFound) {
-      title("👍 Excellent! You are all set - You can 'Switch' now!\n");
-    } else {
-      title("⚠️ Caution! One or more dependencies were not found, please run the switch installer again!\n");
+      if (gitFound && ghFound) {
+        title("👍 Excellent! You are all set - You can 'Switch' now!\n");
+      } else {
+        title("⚠️ Caution! One or more dependencies were not found, please run the switch installer again!\n");
+      }
     }
-  }
 
-  command.action(run);
-  return command;
-}
+    command.action(run);
+    return command;
+  },
+};
+
+export default switchSetupPlugin;

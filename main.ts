@@ -1,9 +1,11 @@
 import { Cli } from "./commands/cli.ts";
-import { createSwitchDefault } from "./commands/switch-default.ts";
-import { createSwitchSetup } from "./commands/switch-setup.ts";
-import { createSwitchInit } from "./commands/switch-init.ts";
+import { loadPlugins } from "./utils/plugin-loader.ts";
 
-Cli.command("setup", createSwitchSetup());
-Cli.command("init", createSwitchInit());
-Cli.command("default", createSwitchDefault());
-Cli.parse(Deno.args);
+// Load plugin commands
+const plugins = await loadPlugins();
+for (const plugin of plugins) {
+  Cli.command(plugin.name, plugin.createCommand());
+}
+
+// Parse command line arguments
+await Cli.parse(Deno.args);

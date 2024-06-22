@@ -8,22 +8,26 @@ import {
   SwitchConfig
 } from "../domain/types.ts";
 import { confirm, debug, echo, numberInput, select, title } from "../commands/cli.ts";
-import { listFiles, loadYaml, cloneTemplate, templateFill } from "./fs.ts"; // Assuming these functions exist in a template.ts file
+import { listFiles, loadYaml, cloneTemplate, templateFill } from "./fs.ts";
 
+// Get the list of GitHub organizations
 async function orgs(): Promise<StringArray> {
   return (await shell`gh org list`.text()).split("\n");
 }
 
+// Get the list of GitHub organizations as an array of key-value pairs
 export async function orgList(): Promise<ArrayKV> {
   return ArrayToTable(await orgs());
 }
 
+// Clone a GitHub repository
 async function cloneRepository(repo: string, branch = "main", destinationFolder = ""): Promise<string[]> {
   await shell`gh repo clone ${repo} ${destinationFolder} -- -b ${branch}`;
   await Deno.remove(join(destinationFolder, ".git"), { recursive: true });
   return listFiles(destinationFolder);
 }
 
+// Report an issue when template generation fails
 async function reportIssue(config: SwitchConfig, failedFiles: FileError[]): Promise<void> {
   const title = `Switch CLI Template Generation Failed - Project ${config.name}`;
   const body = `Failed to generate certain files, probable template issue?
@@ -43,9 +47,12 @@ ${failedFiles.map((f) => `- [ ] ${f.file} - ${escape(f.error)}`).join("\n")}`;
   await createIssue(DEFAULT_TEMPLATE_REPOSITORY, title, body, 'defect');
 }
 
+// Create an onboarding ticket for a new project
 export async function createOnboardingTicket(config: SwitchConfig): Promise<void> {
   title(`Creating onboarding ticket...`);
-  const appTypeName = config.type === "fa" ? "Function App" : config.type === "swa" ? "Static Web App" : "Container App";
+  const appTypeName = config.type === AppType.Function ? "Function App" : 
+                      config.type === AppType.StaticWebApp ? "Static Web App" : 
+                      "Container App";
   const issueBody = `New ${appTypeName} Onboarding Request
   
 | Property | Value |
@@ -58,7 +65,7 @@ export async function createOnboardingTicket(config: SwitchConfig): Promise<void
 
 Onboarding Tasks Pending`;
 
-  const additionalTasks = config.type === "swa" ? `
+  const additionalTasks = config.type === AppType.StaticWebApp ? `
 - [ ] Enable private endpoint for swa
 - [ ] Register swa to App Gateway in Hub
 - [ ] Register subdomain/endpoint in Front Door(FD)
@@ -73,10 +80,12 @@ Onboarding Tasks Pending`;
   );
 }
 
+// Create a GitHub issue
 async function createIssue(repo: string, title: string, body: string, label: string): Promise<void> {
   await shell`gh issue create -R ${repo} --title ${title} --body ${body} --label ${label}`;
 }
 
+// Create a Switch command with standard options and functionality
 export function createSwitchCommand(name: string, description: string) {
   const command = new Command().name(name).description(description);
   const prompts: Record<string, PromptFunction> = {};
@@ -103,7 +112,7 @@ export function createSwitchCommand(name: string, description: string) {
       .option(`-p, --port <port:number>`, `Optional, A specific port for incoming traffic. Required only for container apps.`)
       .option(`--skip-tickets`, `Skip creating an onboarding ticket for Cloud Engineering team.`);
 
-    prompts["port"] = async (config?: SwitchConfig) => config?.type === AppType["Container App"]
+    prompts["port"] = async (config?: SwitchConfig) => config?.type === AppType.ContainerApp
       ? await numberInput(`Please provide the port your service will be running`)
       : undefined;
 
@@ -158,7 +167,7 @@ export function createSwitchCommand(name: string, description: string) {
     const envTemplatePath = `${localTemplatePath}/env/`;
     for (const environment of inputConfig.environments) {
       const envConfig = { currentEnv: environment, ...inputConfig };
-      const excludeFiles = inputConfig.type === AppType["Static Web App"] || environment.type === EnvironmentType["CI"]
+      const excludeFiles = inputConfig.type === AppType.StaticWebApp || environment.type === EnvironmentType.CI
         ? [".github/environment/[env]-parameters-api.bicepparam"]
         : [];
       await cloneTemplate(envTemplatePath, projectFolder, { env: environment.name }, envConfig, excludeFiles);
@@ -175,17 +184,16 @@ export function createSwitchCommand(name: string, description: string) {
     name: string,
     type: EnvironmentType
   ) {
-    const envExists = inputConfig?.environments?.filter((e) => e.type === type);
-    if (!envExists || envExists.length === 0) {
+    const envExists = inputConfig.environments?.some((e) => e.type === type);
+    if (!envExists) {
       echo(`Auto registering ${type} environment...`);
-      console.log("*** Adding", type);
-      inputConfig?.environments?.push({ type, name });
+      inputConfig.environments?.push({ type, name });
     }
   }
 
   async function validateStandardConfig(
     inputs: SwitchConfig,
-    otherInputs: { githubOrg: Value; },
+    otherInputs: Record<string, unknown>,
     overwrite = false,
     currentConfig?: SwitchConfig
   ) {
@@ -220,7 +228,7 @@ export function createSwitchCommand(name: string, description: string) {
     }
   }
 
-  async function loadConfig(folder: string): Promise<SwitchConfig> {
+  async function loadConfig(folder: string): Promise<SwitchConfig | undefined> {
     return await loadYaml<SwitchConfig>(join(folder, `Switchfile`));
   }
 

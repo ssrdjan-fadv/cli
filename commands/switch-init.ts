@@ -1,7 +1,10 @@
-import { CommandOptions } from "https://deno.land/x/cliffy@v1.0.0-rc.3/command/mod.ts";
+// plugins/switch_init.ts
+
+import { Command } from "https://deno.land/x/cliffy@v1.0.0-rc.3/command/mod.ts";
+import { PluginCommand } from "../domain/plugin-interface.ts";
 import { DefaultSwitchConfig, SwitchConfig } from "../domain/types.ts";
 import { basename } from "https://deno.land/std@0.201.0/path/basename.ts";
-import { confirm, echo, title } from "./cli.ts";
+import { confirm, echo, title } from "../commands/cli.ts";
 import { join } from "https://deno.land/std@0.207.0/path/join.ts";
 import { exists, recursiveCopyFiles } from "../utils/fs.ts";
 import { createSwitchCommand, createOnboardingTicket } from "../utils/github.ts";
@@ -49,46 +52,52 @@ function showNextSteps(): void {
   `);
 }
 
-export function createSwitchInit() {
-  const command = createSwitchCommand("init", "Enables your current project(folder) for the Switch Platform.");
-  command.alias("i");
-  command.enableStandardOptions();
-  
-  command
-    .example("switch init", "Initializes Switch CI/CD on the project in the current folder and prompts for all necessary input.")
-    .example("switch init --type=swa", "Initializes Switch CI/CD as a Static Web App on the project in the current folder and prompts for all necessary input.")
-    .example("switch init --type=fa --language=node", "Initializes Switch CI/CD as a Function App on the project in the current folder and prompts for all necessary input.")
-    .example("switch init --type=ca --language=c#", "Initializes Switch CI/CD as a Container App on the project in the current folder and prompts for all necessary input.");
+const switchInitPlugin: PluginCommand = {
+  name: "init",
+  description: "Enables your current project(folder) for the Switch Platform.",
+  createCommand: () => {
+    const command = createSwitchCommand("init", "Enables your current project(folder) for the Switch Platform.");
+    command.alias("i");
+    command.enableStandardOptions();
+    
+    command
+      .example("switch init", "Initializes Switch CI/CD on the project in the current folder and prompts for all necessary input.")
+      .example("switch init --type=swa", "Initializes Switch CI/CD as a Static Web App on the project in the current folder and prompts for all necessary input.")
+      .example("switch init --type=fa --language=node", "Initializes Switch CI/CD as a Function App on the project in the current folder and prompts for all necessary input.")
+      .example("switch init --type=ca --language=c#", "Initializes Switch CI/CD as a Container App on the project in the current folder and prompts for all necessary input.");
 
-  async function run(options: CommandOptions): Promise<void> {
-    const projectFolder = ".";
-    const inputs: SwitchConfig = { ...DefaultSwitchConfig, name: basename(Deno.cwd()) };
-    title(`Project: ${inputs.name}`);
+    async function run(options: Command.IParseResult["options"]): Promise<void> {
+      const projectFolder = ".";
+      const inputs: SwitchConfig = { ...DefaultSwitchConfig, name: basename(Deno.cwd()) };
+      title(`Project: ${inputs.name}`);
 
-    const currentConfig = await command.loadConfig(projectFolder);
-    if (currentConfig) {
-      const overwrite = await confirm("This project/folder is already enabled with Switch. Overwrite configuration?");
-      if (!overwrite) throw new Error("Operation cancelled by user.");
-    }
-
-    await command.validateStandardConfig(inputs, options, !!currentConfig, currentConfig);
-
-    const tmpFolder = await Deno.makeTempDir();
-    try {
-      await command.pullTemplate(inputs, options.base as string, options.branch as string, tmpFolder);
-      await copyTemplateFiles(projectFolder, tmpFolder);
-      await command.saveConfig(projectFolder, inputs);
-
-      if (!options.skipTickets) {
-        await createOnboardingTicket(inputs);
+      const currentConfig = await command.loadConfig(projectFolder);
+      if (currentConfig) {
+        const overwrite = await confirm("This project/folder is already enabled with Switch. Overwrite configuration?");
+        if (!overwrite) throw new Error("Operation cancelled by user.");
       }
 
-      showNextSteps();
-    } finally {
-      await Deno.remove(tmpFolder, { recursive: true });
-    }
-  }
+      await command.validateStandardConfig(inputs, options, !!currentConfig, currentConfig);
 
-  command.action(run);
-  return command;
-}
+      const tmpFolder = await Deno.makeTempDir();
+      try {
+        await command.pullTemplate(inputs, options.base as string, options.branch as string, tmpFolder);
+        await copyTemplateFiles(projectFolder, tmpFolder);
+        await command.saveConfig(projectFolder, inputs);
+
+        if (!options.skipTickets) {
+          await createOnboardingTicket(inputs);
+        }
+
+        showNextSteps();
+      } finally {
+        await Deno.remove(tmpFolder, { recursive: true });
+      }
+    }
+
+    command.action(run);
+    return command.command;
+  },
+};
+
+export default switchInitPlugin;
