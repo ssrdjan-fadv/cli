@@ -30,30 +30,49 @@ export const parseArgs = (args: string[]): Record<string, unknown> => {
   });
 };
 
-export const loadCommands = async (): Promise<Command[]> => {
+export const loadCommand = async (commandName: string): Promise<Command> => {
   const commandsDir = "commands";
-  const plugins: Command[] = [];
+  const commandFile = `${commandsDir}/${commandName}.ts`;
 
-  for await (const command of Deno.readDir(commandsDir)) {
-    if (command.isFile && command.name.endsWith(".ts")) {
-      const module = await import(`./${commandsDir}/${command.name}`);
-      if (typeof module.default === "object" && 'execute' in module.default) {
-        plugins.push(module.default as Command);
+  try {
+    const module = await import(`./${commandFile}`);
+    if (typeof module.default === "object" && 'execute' in module.default) {
+      return module.default as Command;
+    } else {
+      throw new Error(`Invalid command module: ${commandName}`);
+    }
+  } catch (error) {
+    if (error instanceof Deno.errors.NotFound) {
+      // If the command file is not found, try loading the default command
+      if (commandName !== "default") {
+        return loadCommand("default");
+      }
+    }
+    throw error;
+  }
+};
+
+export const discoverCommands = async (): Promise<Command[]> => {
+  const commandsDir = "commands";
+  const commands: Command[] = [];
+
+  for await (const entry of Deno.readDir(commandsDir)) {
+    if (entry.isFile && entry.name.endsWith(".ts")) {
+      const commandName = entry.name.replace(".ts", "");
+      try {
+        const command = await loadCommand(commandName);
+        commands.push(command);
+      } catch (error) {
+        console.error(`Error loading command ${commandName}: ${error.message}`);
       }
     }
   }
-  return plugins;
+
+  return commands;
 };
 
-export const executeCommand = async (plugins: Command[], args: Record<string, unknown>): Promise<void> => {
-  const commandName = args[0] as string;
-  const command = plugins.find(command => command.name === commandName);
-
-  if (command) {
-    await command.execute(args);
-  } else {
-    console.log("Unknown command. Use --help for usage information.");
-  }
+export const executeCommand = async (command: Command, args: Record<string, unknown>): Promise<void> => {
+  await command.execute(args);
 };
 
 export const title = (message: string): void => console.log(cyan(bold(`\n${message}\n`)));

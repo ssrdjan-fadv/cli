@@ -19,10 +19,17 @@ const which = async (name: string, command: string): Promise<boolean> => {
   return false;
 };
 
-export const switchSetupPlugin: Command = {
+const switchSetupPlugin: Command = {
   name: "check",
   description: "Performs a system check to locate required dependencies.",
-  execute: async () => {
+  execute: async (args: Record<string, unknown>) => {
+    if (args.help) {
+      echo("Usage: switch check");
+      echo("Performs a system check to locate required dependencies.");
+      echo("This command does not take any additional options.");
+      return;
+    }
+
     title("Checking System Configuration");
     const gitFound = await which('Git CLI', 'git');
     const ghFound = await which('GitHub CLI', 'gh');
@@ -34,3 +41,5 @@ export const switchSetupPlugin: Command = {
     }
   }
 };
+
+export default switchSetupPlugin;
