@@ -1,11 +1,8 @@
-import { Cli } from "./utils/cli.ts";
+import { parse } from "https://deno.land/std@0.181.0/flags/mod.ts";
 import { loadPlugins } from "./utils/plugin-loader.ts";
+import { executeCommand } from "./utils/cli.ts";
 
-// Load plugin commands
+const args = parse(Deno.args);
 const plugins = await loadPlugins();
-for (const plugin of plugins) {
-  Cli.command(plugin.name, plugin.createCommand());
-}
 
-// Parse command line arguments
-await Cli.parse(Deno.args);
+await executeCommand(plugins, args);
