@@ -1,7 +1,7 @@
-import { PluginCommand } from "../domain/types.ts";
-import { echo, title } from "../utils/cli.ts";
+import { Command } from "../types.ts";
+import { echo, title } from "../cli.ts";
 
-export const switchDefaultPlugin: PluginCommand = {
+export const switchDefaultPlugin: Command = {
   name: "default",
   description: "Default action when no subcommand is provided.",
 

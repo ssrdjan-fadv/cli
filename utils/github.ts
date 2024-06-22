@@ -1,9 +1,7 @@
-// utils/github.ts
-
 import { join } from "https://deno.land/std@0.181.0/path/mod.ts";
 import { stringify } from "https://deno.land/std@0.207.0/yaml/mod.ts";
-import { FileError, escape, AppType, EnvironmentType, PromptFunction, SwitchConfig, ArrayKV} from "../domain/types.ts";
-import { confirm, echo, numberInput, select, title } from "../utils/cli.ts";
+import { FileError, escape, AppType, EnvironmentType, PromptFunction, SwitchConfig, ArrayKV} from "../types.ts";
+import { confirm, echo, numberInput, select, title } from "../cli.ts";
 import { listFiles, cloneTemplate, templateFill } from "./fs.ts";
 import { basename } from "https://deno.land/std@0.110.0/path/win32.ts";
 import path from 'node:path';
@@ -13,24 +11,8 @@ const DEFAULT_TEMPLATE_REPOSITORY = "FA-Switch-Platform/Switch-CICD-Template";
 export const DEFAULT_HOME_TEMPLATE_PATH = path.join(os.homedir() || "", ".switch-cli", "templates");
 export const DEFAULT_LOCAL_TEMPLATE_PATH = path.join(basename(Deno.cwd()), "templates");
 
-const getTemplatePath = () =>     
-  (Deno.statSync(DEFAULT_HOME_TEMPLATE_PATH).isDirectory) ? DEFAULT_HOME_TEMPLATE_PATH : DEFAULT_LOCAL_TEMPLATE_PATH;
-
-const ArrayToTable = (options: string[]): ArrayKV => options.map(value => ({ name: value, value }));
-
-// Get the list of GitHub organizations
-const orgList = async (): Promise<ArrayKV> => {
-  const command = new Deno.Command("gh", {
-    args: ["org", "list"],
-    stdout: "piped",
-    stderr: "piped",
-  });
-
-  const { stdout } = await command.output();
-  
-  const strArray = new TextDecoder().decode(stdout).trim().split("\n");
-  return ArrayToTable(strArray);
-};
+const getTemplatePath = () => Deno.statSync(DEFAULT_HOME_TEMPLATE_PATH).isDirectory ?
+                                DEFAULT_HOME_TEMPLATE_PATH : DEFAULT_LOCAL_TEMPLATE_PATH;
 
 // Clone a GitHub repository
 export const cloneRepository = async (repo: string, branch = "main", destinationFolder = ""): Promise<string[]> => {
@@ -64,7 +46,7 @@ export const reportIssue = async (config: SwitchConfig, failedFiles: FileError[]
 ##    Failed Files:
 
 ${failedFiles.map((f) => `- [ ] ${f.file} - ${escape(f.error)}`).join("\n")}`;
-
+  
   await createIssue(DEFAULT_TEMPLATE_REPOSITORY, title, body, 'defect');
 };
 
@@ -121,21 +103,35 @@ export const createIssue = async (repo: string, title: string, body: string, lab
   console.log(`Issue created successfully: ${output.trim()}`);
 };
 
+// Get the list of GitHub organizations
+const orgList = async (): Promise<string[]> => {
+  const command = new Deno.Command("gh", {
+    args: ["org", "list"],
+    stdout: "piped",
+    stderr: "piped",
+  });
+
+  const { stdout } = await command.output();
+  return new TextDecoder().decode(stdout).trim().split("\n");
+};
+
 export const validateStandardConfig = async (
   inputs: SwitchConfig,
-  otherInputs: Record<string, unknown>,
-  overwrite = false,
+  parsedArgs: Record<string, unknown>,
   currentConfig?: SwitchConfig
 ): Promise<void> => {
   await collectIfMissing(inputs);
-  if (!otherInputs.githubOrg) {
-    otherInputs.githubOrg = inputs.domain === "Other"
-      ? await select(`Select the github owner repo`, orgList())
+  if (!parsedArgs.githubOrg) {
+    const orgs = await orgList();
+    //todo: fishy business here ...
+    // const orgsTable = orgs.map(value => ({ name: value, value }));
+    parsedArgs.githubOrg = inputs.domain === "Other"
+      ? await select(`Select the github owner repo`, orgs)
       : `FA-Switch-${inputs.domain}`;
   }
-  inputs.repository = `${otherInputs.githubOrg}/${inputs.name}`;
+  inputs.repository = `${parsedArgs.githubOrg}/${inputs.name}`;
 
-  const overwriteHooks = overwrite && await confirm(
+  const overwriteHooks = !!currentConfig && await confirm(
     `Would you like to overwrite the hooks and re-generate?`
   );
   if (!overwriteHooks && currentConfig) inputs.hooks = currentConfig.hooks;

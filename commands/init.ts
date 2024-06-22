@@ -1,6 +1,6 @@
-import { PluginCommand, SwitchConfig, DefaultSwitchConfig } from "../domain/types.ts";
+import { Command, SwitchConfig, DefaultSwitchConfig } from "../types.ts";
 import { basename } from "https://deno.land/std@0.181.0/path/mod.ts";
-import { confirm, echo, title } from "../utils/cli.ts";
+import { confirm, echo, title } from "../cli.ts";
 import { join } from "https://deno.land/std@0.181.0/path/mod.ts";
 import { exists, loadConfig } from "../utils/fs.ts";
 import { validateStandardConfig, createOnboardingTicket, pullTemplate, saveConfig } from "../utils/github.ts";
@@ -35,7 +35,7 @@ const showNextSteps = (): void => {
     Be sure to fill those out with your build and test commands.
 
     Step 2: Review Any Additional Resource Configuration
-    If you chose an additional resource such as postgres or eventhub, 
+    If you chose an additional resource such as postgres or EventsHub, 
     you will need to go to .github/environments/<env>-parameters.bicepparam files and update the configs.
     You can find more information about the parameters here 
     https://refactored-adventure-qkw91lk.pages.github.io/app-hosting/optional-bicep-parameters/
@@ -47,7 +47,7 @@ const showNextSteps = (): void => {
   `);
 };
 
-const switchInitPlugin: PluginCommand = {
+const switchInitPlugin: Command = {
   name: "init",
   description: "Enables your current project(folder) for the Switch Platform.",
   execute: async (args: Record<string, unknown>) => {
@@ -60,11 +60,10 @@ const switchInitPlugin: PluginCommand = {
       const overwrite = await confirm("This project/folder is already enabled with Switch. Overwrite configuration?");
       if (!overwrite) throw new Error("Operation cancelled by user.");
     }
-
-    await validateStandardConfig(inputs, args, !!currentConfig, currentConfig);
-
+    
     const tmpFolder = await Deno.makeTempDir();
     try {
+      await validateStandardConfig(inputs, args, currentConfig);
       await pullTemplate(inputs, args.base as string, args.branch as string, tmpFolder);
       await copyTemplateFiles(projectFolder, tmpFolder);
       await saveConfig(projectFolder, inputs);

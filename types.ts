@@ -1,4 +1,4 @@
-export type PluginCommand = {
+export type Command = {
   name: string;
   description: string;
   execute: (args: Record<string, unknown>) => Promise<void>;

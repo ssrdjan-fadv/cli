@@ -1,7 +1,7 @@
 import { Eta } from "https://deno.land/x/eta@v3.1.1/src/index.ts";
 import { join, dirname } from "https://deno.land/std@0.207.0/path/mod.ts";
 import { parse, stringify } from "https://deno.land/std@0.207.0/yaml/mod.ts";
-import { FileError, StringArray } from "../domain/types.ts";
+import { FileError, StringArray } from "../types.ts";
 import { copy } from "https://deno.land/std@0.181.0/fs/mod.ts";
 
 // Debug function to log messages when DEBUG environment variable is set to 'true'

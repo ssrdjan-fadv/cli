@@ -1,8 +1,7 @@
 import { parse } from "https://deno.land/std@0.181.0/flags/mod.ts";
-import { loadPlugins } from "./utils/plugin-loader.ts";
-import { executeCommand } from "./utils/cli.ts";
+import { loadCommands, executeCommand } from "./cli.ts";
 
 const args = parse(Deno.args);
-const plugins = await loadPlugins();
+const commands = await loadCommands();
 
-await executeCommand(plugins, args);
+await executeCommand(commands, args);
