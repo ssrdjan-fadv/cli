@@ -36,7 +36,6 @@ export const loadCommands = async (): Promise<Command[]> => {
 
   for await (const command of Deno.readDir(commandsDir)) {
     if (command.isFile && command.name.endsWith(".ts")) {
-      console.log(`What is thsi: ./${commandsDir}/${command.name}`)
       const module = await import(`./${commandsDir}/${command.name}`);
       if (typeof module.default === "object" && 'execute' in module.default) {
         plugins.push(module.default as Command);
@@ -80,26 +79,3 @@ export const numberInput = (message: string): number => {
   const response = prompt(yellow(message));
   return parseInt(response || "0", 10);
 };
-
-//
-// Start and show banner and footer
-//
-const cmd = new Deno.Command("clear", { args: [] });
-const { stdout } = await cmd.output();
-console.log(new TextDecoder().decode(stdout));
-
-const VERSION = "1.2.2";
-const banner = green(`
-   _____      ___________________ __   _______   ____
-  / __/ | /| / /  _/_  __/ ___/ // /  / ___/ /  /  _/
- _\\ \\ | |/ |/ // /  / / / /__/ _  /  / /__/ /___/ /
-/___/ |__/|__/___/ /_/  \\___/_//_/   \\___/____/___/
-`);
-
-const footer = `
-_____________________________________________________
-First Advantage                        -- Ship Faster
-${blue(white(` v${VERSION}-${Deno.build.os}-${Deno.build.arch} `))}
-`;
-
-console.log(banner + footer);
