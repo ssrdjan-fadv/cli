@@ -59,12 +59,10 @@ async function showInitialHelp() {
 }
 
 async function runInitialCheck() {
-  console.log(bold(cyan("\nRunning initial system check...")));
   const checkCommand = await loadCommand("check");
   try {
     await executeCommand(checkCommand, {});
   } catch (_) {
-    console.log(red("\n⚠️  Critical dependencies are missing. Please install them and try again.\n"));
     Deno.exit(1);
   }
 }

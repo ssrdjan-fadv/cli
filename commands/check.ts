@@ -1,5 +1,6 @@
 import { Command } from "../types.ts";
 import { title, echo, error } from "../cli.ts";
+import { bold, red } from "https://deno.land/std@0.181.0/fmt/colors.ts";
 
 async function checkDependency(cmd: string, args: string[]): Promise<boolean> {
   try {
@@ -15,7 +16,7 @@ async function checkDependency(cmd: string, args: string[]): Promise<boolean> {
       return false;
     }
   } catch (_) {
-    error(`${cmd} is not installed or you're not logged in.`);
+    error(`${bold(cmd)} is not installed or you're not logged in.`);
     return false;
   }
   return true;
@@ -25,7 +26,7 @@ async function ensureCliDependencies(): Promise<boolean> {
   const checks = [
     checkDependency("git", ["--version"]),
     checkDependency("gh", ["auth", "status"]),
-    checkDependency("az", ["account", "show"]),
+    // checkDependency("az", ["account", "show"]),
   ];
 
   // Use `Promise.all` to wait for all checks to complete
@@ -35,7 +36,6 @@ async function ensureCliDependencies(): Promise<boolean> {
   if (results.includes(false)) {
     return false;
   }
-
   return true;
 }
 
@@ -55,7 +55,8 @@ const switchSetupPlugin: Command = {
     if (allDependenciesInstalled) {
       echo("\n👍 Excellent! All required CLIs are installed and configured.");
     } else {
-      throw new Error("Missing dependencies");
+      echo(red("\n⚠️  Critical dependencies are missing. Please install them, make sure you can login and try again.\n"));
+      throw new Error();
     }
   }
 };
