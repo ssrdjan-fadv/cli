@@ -1,4 +1,4 @@
-import { Cli } from "./commands/cli.ts";
+import { Cli } from "./utils/cli.ts";
 import { loadPlugins } from "./utils/plugin-loader.ts";
 
 // Load plugin commands

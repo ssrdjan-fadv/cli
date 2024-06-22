@@ -1,9 +1,9 @@
 // utils/plugin_loader.ts
 
-import { PluginCommand } from "../domain/plugin-interface.ts";
+import { PluginCommand } from "../domain/types.ts";
 
 export async function loadPlugins(): Promise<PluginCommand[]> {
-  const pluginDir = "./plugins";
+  const pluginDir = "./commands";
   const plugins: PluginCommand[] = [];
 
   for await (const dirEntry of Deno.readDir(pluginDir)) {

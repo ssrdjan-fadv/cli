@@ -1,4 +1,12 @@
 import { basename } from "https://deno.land/std@0.110.0/path/win32.ts";
+import { Command } from "https://deno.land/x/cliffy@v1.0.0-rc.3/command/mod.ts";
+
+export interface PluginCommand {
+  name: string;
+  description: string;
+  createCommand: () => Command;
+}
+
 import path from 'node:path';
 import os from 'node:os';
 

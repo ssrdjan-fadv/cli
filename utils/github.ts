@@ -7,7 +7,7 @@ import {
   AppType, EnvironmentType, PromptFunction, Value, enumValues, getTemplatePath, isPrimitive,
   SwitchConfig
 } from "../domain/types.ts";
-import { confirm, debug, echo, numberInput, select, title } from "../commands/cli.ts";
+import { confirm, debug, echo, numberInput, select, title } from "./cli.ts";
 import { listFiles, loadYaml, cloneTemplate, templateFill } from "./fs.ts";
 
 // Get the list of GitHub organizations

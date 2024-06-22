@@ -4,7 +4,7 @@ import { Command } from "https://deno.land/x/cliffy@v1.0.0-rc.3/command/mod.ts";
 import { PluginCommand } from "../domain/plugin-interface.ts";
 import { DefaultSwitchConfig, SwitchConfig } from "../domain/types.ts";
 import { basename } from "https://deno.land/std@0.201.0/path/basename.ts";
-import { confirm, echo, title } from "../commands/cli.ts";
+import { confirm, echo, title } from "../utils/cli.ts";
 import { join } from "https://deno.land/std@0.207.0/path/join.ts";
 import { exists, recursiveCopyFiles } from "../utils/fs.ts";
 import { createSwitchCommand, createOnboardingTicket } from "../utils/github.ts";
