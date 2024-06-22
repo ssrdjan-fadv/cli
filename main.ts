@@ -1,19 +1,74 @@
 import { parse } from "https://deno.land/std@0.181.0/flags/mod.ts";
-import { white, green, blue, yellow, bold, cyan, red } from "https://deno.land/std@0.181.0/fmt/colors.ts";
+import { white, green, yellow, bold, cyan, red, blue } from "https://deno.land/std@0.181.0/fmt/colors.ts";
 import { loadCommand, executeCommand, discoverCommands } from "./cli.ts";
 
 const VERSION = "1.2.2";
-const banner = green(`
+
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function rainbowText(text: string): string {
+  const colors = [green, blue, cyan, yellow];
+
+  let result = "";
+  for (let i = 0; i < text.length; i++) {
+    const color = colors[i % colors.length];
+    result += color(text[i]);
+  }
+  return result;
+}
+
+async function animateBanner() {
+  Deno.stdout.writeSync(new TextEncoder().encode("\x1b[?25l"));
+  const bannerFrames = [
+    `
    _____      ___________________ __   _______   ____
   / __/ | /| / /  _/_  __/ ___/ // /  / ___/ /  /  _/
  _\\ \\ | |/ |/ // /  / / / /__/ _  /  / /__/ /___/ /
 /___/ |__/|__/___/ /_/  \\___/_//_/   \\___/____/___/
-`);
+    ✨
+    `,
+    `
+   _____      ___________________ __   _______   ____
+  / __/ | /| / /  _/_  __/ ___/ // /  / ___/ /  /  _/
+ _\\ \\ | |/ |/ // /  / / / /__/ _  /  / /__/ /___/ /
+/___/ |__/|__/___/ /_/  \\___/_//_/   \\___/____/___/
+    ✨ ✨ 
+    `,
+    `
+   _____      ___________________ __   _______   ____
+  / __/ | /| / /  _/_  __/ ___/ // /  / ___/ /  /  _/
+ _\\ \\ | |/ |/ // /  / / / /__/ _  /  / /__/ /___/ /
+/___/ |__/|__/___/ /_/  \\___/_//_/   \\___/____/___/
+    ✨ 
+    `,
+    `
+   _____      ___________________ __   _______   ____
+  / __/ | /| / /  _/_  __/ ___/ // /  / ___/ /  /  _/
+ _\\ \\ | |/ |/ // /  / / / /__/ _  /  / /__/ /___/ /
+/___/ |__/|__/___/ /_/  \\___/_//_/   \\___/____/___/
+    `,
+  ];
+
+  for (let i = 0; i < 3; i++) {
+    for (const frame of bannerFrames) {
+      console.clear();
+      console.log(rainbowText(frame));
+      await sleep(200);
+    }
+  }
+  Deno.stdout.writeSync(new TextEncoder().encode("\x1b[?25h"));
+}
 
 const footer = `
-_____________________________________________________
-First Advantage                        -- Ship Faster
-${blue(white(` v${VERSION}-${Deno.build.os}-${Deno.build.arch} `))}
+╔═══════════════════════════════════════════════════╗
+║                                                   ║
+║        First Advantage -- Ship Faster!            ║
+║                                                   ║
+╚═══════════════════════════════════════════════════╝
+
+v${VERSION}-${Deno.build.os}, ${Deno.build.arch}
 `;
 
 function clearConsole() {
@@ -22,9 +77,10 @@ function clearConsole() {
   console.log(new TextDecoder().decode(stdout));
 }
 
-function printBanner() {
+async function printBanner() {
   clearConsole();
-  console.log(banner + footer);
+  await animateBanner();
+  console.log(footer);
 }
 
 async function runCommand(input: string) {
@@ -39,7 +95,7 @@ async function runCommand(input: string) {
     const command = await loadCommand(commandName);
     await executeCommand(command, args);
   } catch (error) {
-    console.error(`Error: ${error.message}`);
+    console.error(red(`Error: ${error.message}`));
   }
 }
 
@@ -63,12 +119,14 @@ async function runInitialCheck() {
   try {
     await executeCommand(checkCommand, {});
   } catch (_) {
+    console.log(red("\n⚠️ Critical dependencies are missing. Please install them and try again."));
+    console.log(yellow("Run 'switch check' for more details on missing dependencies."));
     Deno.exit(1);
   }
 }
 
 async function main() {
-  printBanner();
+  await printBanner();
   await runInitialCheck();
   await showInitialHelp();
 
