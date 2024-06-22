@@ -1,5 +1,5 @@
 import { parse } from "https://deno.land/std@0.181.0/flags/mod.ts";
-import { white, green, blue, yellow, bold, cyan } from "https://deno.land/std@0.181.0/fmt/colors.ts";
+import { white, green, blue, yellow, bold, cyan, red } from "https://deno.land/std@0.181.0/fmt/colors.ts";
 import { loadCommand, executeCommand, discoverCommands } from "./cli.ts";
 
 const VERSION = "1.2.2";
@@ -55,11 +55,23 @@ async function showInitialHelp() {
   commands.forEach(cmd => {
     console.log(yellow(`  ${cmd.name.padEnd(15)} ${cmd.description}`));
   });
-  console.log(bold(cyan("\nFor more details, type 'help' or '<command> --help'")));
+  console.log(bold(cyan("\n⚠️  For more details, type 'help' or '<command> --help'")));
+}
+
+async function runInitialCheck() {
+  console.log(bold(cyan("\nRunning initial system check...")));
+  const checkCommand = await loadCommand("check");
+  try {
+    await executeCommand(checkCommand, {});
+  } catch (_) {
+    console.log(red("\n⚠️  Critical dependencies are missing. Please install them and try again.\n"));
+    Deno.exit(1);
+  }
 }
 
 async function main() {
   printBanner();
+  await runInitialCheck();
   await showInitialHelp();
 
   while (true) {
