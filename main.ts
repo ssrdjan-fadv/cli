@@ -19,9 +19,6 @@ function rainbowText(text: string): string {
 }
 
 async function animateBanner() {
-  // Hide cursor
-  Deno.stdout.writeSync(new TextEncoder().encode("\x1b[?25l"));
-
   const bannerFrames = [
     `
    _____      ___________________ __   _______   ____
@@ -58,8 +55,6 @@ async function animateBanner() {
     await sleep(150);
   }
 
-  // Show Cursor
-  Deno.stdout.writeSync(new TextEncoder().encode("\x1b[?25h"));
 }
 
 const footer = `
@@ -73,9 +68,15 @@ v${VERSION}-${Deno.build.os}, ${Deno.build.arch}
 `;
 
 async function printBanner() {
+    // Hide cursor
+  Deno.stdout.writeSync(new TextEncoder().encode("\x1b[?25l"));
+  
   await runShellCommand("clear", []);
   await animateBanner();
   echo(footer);
+
+  // Show Cursor
+  Deno.stdout.writeSync(new TextEncoder().encode("\x1b[?25h"));
 }
 
 function printPrompt() {

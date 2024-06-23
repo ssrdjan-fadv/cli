@@ -14,14 +14,14 @@ export const standardOptions = [
   { name: "skip-tickets", description: "Skip creating an onboarding ticket for Cloud Engineering team.", type: "boolean" },
 ];
 
-export const title = (message: string): void => echo(cyan(bold(`\n${message}\n`)));
-export const echo = (message: string): void => echo(white(message));
-export const error = (message: string): void => echo(red(message));
+export const title = (message: string): void => console.log(cyan(bold(`\n${message}\n`)));
+export const echo = (message: string): void => console.log(white(message));
+export const error = (message: string): void => console.log(red(message));
 
 export const printStandardOptionsHelp = (): void => {
-  echo("Standard options:");
+  console.log("Standard options:");
   for (const option of standardOptions) {
-    echo(`  --${option.name}\t${option.description}`);
+    console.log(`  --${option.name}\t${option.description}`);
   }
 };
 
@@ -84,7 +84,7 @@ export async function runShellCommand(command: string, args: string[], successMs
   const { code, stdout, stderr } = await process.output();
   try {
     if (code === 0) {
-      echo(successMsg ? `${successMsg}\n` : `${new TextDecoder().decode(stdout).trim()}\n`);
+      console.log(successMsg ? `${successMsg}\n` : `${new TextDecoder().decode(stdout).trim()}\n`);
       return true;
     }
     error(errorMsg ? errorMsg : `Shell Command ${command} failed: ${new TextDecoder().decode(stderr)}`);
@@ -117,9 +117,9 @@ export const confirm = (message: string): boolean => {
 };
 
 export const select = (message: string, options: string[]): string => {
-  echo(yellow(message));
+  console.log(yellow(message));
   options.forEach((option, index) => {
-    echo(`${index + 1}. ${option}`);
+    console.log(`${index + 1}. ${option}`);
   });
   const response = prompt(yellow("Enter your choice (number):"));
   const index = parseInt(response || "", 10) - 1;
