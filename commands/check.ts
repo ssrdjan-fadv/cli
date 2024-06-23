@@ -1,9 +1,23 @@
 import { Command } from "../types.ts";
-import { title, echo } from "../cli.ts";
-import { red } from "https://deno.land/std@0.181.0/fmt/colors.ts";
-import { ensureCliDependencies } from "../utils/ensure-dependencies.ts";
+import { runShellCommand, title, echo } from "../cli.ts";
+import { red, bold } from "https://deno.land/std@0.181.0/fmt/colors.ts";
 
-const switchSetupPlugin: Command = {
+async function ensureCliDependencies(): Promise<boolean> {
+  const checks = [
+    await runShellCommand("git", ["--version"], '', `${bold('git')} is not installed or you're not logged in.`),
+    await runShellCommand("gh", ["auth", "status"], '', `${bold('gh')} is not installed or you're not logged in.`),
+    await runShellCommand("az", ["account", "show"], '', `${bold('az')} is not installed or you're not logged in.`),
+  ];
+
+  // Use `Promise.all` to wait for all checks to complete, if any of the checks failed, return false
+  const results = await Promise.all(checks);
+  if (results.includes(false)) {
+    echo(`\n${results}`)
+    return false;
+  }
+  return true;
+}
+const switchCheckCommand: Command = {
   name: "check",
   description: "Performs a system check to locate required dependencies",
   execute: async (args: Record<string, unknown>) => {
@@ -25,4 +39,4 @@ const switchSetupPlugin: Command = {
   }
 };
 
-export default switchSetupPlugin;
+export default switchCheckCommand;

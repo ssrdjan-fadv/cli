@@ -1,7 +1,7 @@
 import { Command, SwitchConfig, DefaultSwitchConfig, FileError, escape, AppType, EnvironmentType, PromptFunction, ArrayKV } from "../types.ts";
 import { basename, join } from "https://deno.land/std@0.181.0/path/mod.ts";
 import { stringify } from "https://deno.land/std@0.207.0/yaml/mod.ts";
-import { confirm, echo, title, numberInput, select } from "../cli.ts";
+import { confirm, echo, title, numberInput, select, runShellCommand } from "../cli.ts";
 import { exists, loadConfig, listFiles, cloneTemplate, templateFill } from "../utils/fs.ts";
 import path from 'node:path';
 import os from 'node:os';
@@ -56,18 +56,12 @@ const showNextSteps = (): void => {
 
 // Clone a GitHub repository
 const cloneRepository = async (repo: string, branch = "main", destinationFolder = ""): Promise<string[]> => {
-  const command = new Deno.Command("gh", {
-    args: ["repo", "clone", repo, destinationFolder, "--", "-b", branch],
-    stdout: "piped",
-    stderr: "piped",
-  });
-  const { success } = await command.output();
-  if (!success) {
-    throw new Error(`Failed to clone repository: ${repo}`);
+  const result = await runShellCommand('gh', ["repo", "clone", repo, destinationFolder, "--", "-b", branch], `Failed to clone repository: ${repo}`);
+  if (result) {
+    await Deno.remove(join(destinationFolder, ".git"), { recursive: true });
+    return listFiles(destinationFolder);
   }
-
-  await Deno.remove(join(destinationFolder, ".git"), { recursive: true });
-  return listFiles(destinationFolder);
+  return [];
 };
 
 // Report an issue when template generation fails
@@ -86,7 +80,7 @@ const reportIssue = async (config: SwitchConfig, failedFiles: FileError[]): Prom
 ##    Failed Files:
 
 ${failedFiles.map((f) => `- [ ] ${f.file} - ${escape(f.error)}`).join("\n")}`;
-  
+ 
   await createIssue(DEFAULT_TEMPLATE_REPOSITORY, title, body, 'defect');
 };
 
@@ -125,26 +119,15 @@ Onboarding Tasks Pending`;
 
 // Create a GitHub issue
 const createIssue = async (repo: string, title: string, body: string, label: string): Promise<void> => {
-  const command = new Deno.Command("gh", {
-    args: ["issue", "create", "--repo", repo, "--title", title, "--body", body, "--label", label],
-    stdout: "piped",
-    stderr: "piped",
-  });
-
-  const { success, stdout, stderr } = await command.output();
-
-  if (!success) {
-    const errorMessage = new TextDecoder().decode(stderr);
-    throw new Error(`Failed to create issue. Error: ${errorMessage}`);
-  }
-
-  // If you need to use the stdout (e.g., to get the created issue URL)
-  const output = new TextDecoder().decode(stdout);
-  console.log(`Issue created successfully: ${output.trim()}`);
+  await runShellCommand('gh',
+    ['issue', "create", "--repo", repo, "--title", title, "--body", body, "--label", label],
+    `Issue created successfully`,
+    `Failed to clone repository: ${repo}`);
 };
 
-// Get the list of GitHub organizations
+// Get the list of GitHub organizations 
 const orgList = async (): Promise<string[]> => {
+
   const command = new Deno.Command("gh", {
     args: ["org", "list"],
     stdout: "piped",
@@ -276,7 +259,7 @@ const prompts: Record<string, PromptFunction> = {
     : undefined,
 };
 
-const switchInitPlugin: Command = {
+const switchInitCommand: Command = {
   name: "init",
   description: "Enables your current project(folder) for the Switch Platform.",
   execute: async (args: Record<string, unknown>) => {
@@ -308,4 +291,4 @@ const switchInitPlugin: Command = {
   },
 };
 
-export default switchInitPlugin;
+export default switchInitCommand;

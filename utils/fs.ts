@@ -7,7 +7,7 @@ import { copy } from "https://deno.land/std@0.181.0/fs/mod.ts";
 // Debug function to log messages when DEBUG environment variable is set to 'true'
 const debug = (...args: unknown[]): void => {
   if (Deno.env.get("DEBUG") === "true") {
-    console.log(...args);
+    echo(...args);
   }
 };
 

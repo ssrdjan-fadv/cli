@@ -1,6 +1,5 @@
-import { parse } from "https://deno.land/std@0.181.0/flags/mod.ts";
-import { white, green, yellow, bold, cyan, red, blue } from "https://deno.land/std@0.181.0/fmt/colors.ts";
-import { loadCommand, executeCommand, discoverCommands } from "./cli.ts";
+import { bold, red, brightWhite, brightCyan, brightGreen } from "https://deno.land/std@0.181.0/fmt/colors.ts";
+import { discoverCommands, runSwitchCommand, runShellCommand, echo } from "./cli.ts";
 
 const VERSION = "1.2.2";
 
@@ -9,7 +8,7 @@ function sleep(ms: number): Promise<void> {
 }
 
 function rainbowText(text: string): string {
-  const colors = [green, blue, cyan, yellow];
+  const colors = [brightCyan, brightWhite];
 
   let result = "";
   for (let i = 0; i < text.length; i++) {
@@ -20,7 +19,9 @@ function rainbowText(text: string): string {
 }
 
 async function animateBanner() {
+  // Hide cursor
   Deno.stdout.writeSync(new TextEncoder().encode("\x1b[?25l"));
+
   const bannerFrames = [
     `
    _____      ___________________ __   _______   ____
@@ -34,14 +35,14 @@ async function animateBanner() {
   / __/ | /| / /  _/_  __/ ___/ // /  / ___/ /  /  _/
  _\\ \\ | |/ |/ // /  / / / /__/ _  /  / /__/ /___/ /
 /___/ |__/|__/___/ /_/  \\___/_//_/   \\___/____/___/
-    ✨ ✨ 
+    ✨ ✨ ✨  
     `,
     `
    _____      ___________________ __   _______   ____
   / __/ | /| / /  _/_  __/ ___/ // /  / ___/ /  /  _/
  _\\ \\ | |/ |/ // /  / / / /__/ _  /  / /__/ /___/ /
 /___/ |__/|__/___/ /_/  \\___/_//_/   \\___/____/___/
-    ✨ 
+    ✨ ✨
     `,
     `
    _____      ___________________ __   _______   ____
@@ -51,13 +52,13 @@ async function animateBanner() {
     `,
   ];
 
-  for (let i = 0; i < 3; i++) {
-    for (const frame of bannerFrames) {
-      console.clear();
-      console.log(rainbowText(frame));
-      await sleep(200);
-    }
+  for (const frame of bannerFrames) {
+    console.clear();
+    echo(rainbowText(frame));
+    await sleep(150);
   }
+
+  // Show Cursor
   Deno.stdout.writeSync(new TextEncoder().encode("\x1b[?25h"));
 }
 
@@ -71,56 +72,32 @@ const footer = `
 v${VERSION}-${Deno.build.os}, ${Deno.build.arch}
 `;
 
-function clearConsole() {
-  const cmd = new Deno.Command("clear", { args: [] });
-  const { stdout } = cmd.outputSync();
-  console.log(new TextDecoder().decode(stdout));
-}
-
 async function printBanner() {
-  clearConsole();
+  await runShellCommand("clear", []);
   await animateBanner();
-  console.log(footer);
-}
-
-async function runCommand(input: string) {
-  const args = parse(input.split(' '), {
-    boolean: ["help"],
-    alias: { h: "help" },
-  });
-
-  const commandName = args.help ? "help" : (args._[0] as string) || "default";
-
-  try {
-    const command = await loadCommand(commandName);
-    await executeCommand(command, args);
-  } catch (error) {
-    console.error(red(`Error: ${error.message}`));
-  }
+  echo(footer);
 }
 
 function printPrompt() {
-  console.log(cyan("\n" + "=".repeat(50)));
-  console.log(bold(yellow("Enter a command (or 'exit' to quit):")));
-  console.log(cyan("=".repeat(50)));
+  echo(brightWhite("\n" + "=".repeat(50)));
+  echo(bold(brightWhite("Enter a command (or 'exit' to quit):")));
+  echo(brightWhite("=".repeat(50)));
 }
 
 async function showInitialHelp() {
-  console.log(bold(cyan("\nAvailable commands:")));
+  echo(bold(brightWhite("\nAvailable commands:")));
   const commands = await discoverCommands();
   commands.forEach(cmd => {
-    console.log(yellow(`  ${cmd.name.padEnd(15)} ${cmd.description}`));
+    echo(brightWhite(`  ${cmd.name.padEnd(15)} ${cmd.description}`));
   });
-  console.log(bold(cyan("\n⚠️  For more details, type 'help' or '<command> --help'")));
+  echo(bold(brightWhite("\n⚠️  For more details, type 'help' or '<command> --help'")));
 }
 
 async function runInitialCheck() {
-  const checkCommand = await loadCommand("check");
-  try {
-    await executeCommand(checkCommand, {});
-  } catch (_) {
-    console.log(red("\n⚠️ Critical dependencies are missing. Please install them and try again."));
-    console.log(yellow("Run 'switch check' for more details on missing dependencies."));
+  const result = await runSwitchCommand("check");
+  if(!result) {
+    echo(red("\n⚠️ Critical dependencies are missing. Please install them and try again."));
+    echo(brightWhite("Run 'switch check' for more details on missing dependencies.\n"));
     Deno.exit(1);
   }
 }
@@ -132,17 +109,17 @@ async function main() {
 
   while (true) {
     printPrompt();
-    const input = prompt(bold(green("➤ ")));
+    const input = prompt(bold(brightGreen("➤ ")));
     
     if (!input) continue;
     
     if (input.toLowerCase() === 'exit') {
-      console.log(green("Thank you for using Switch CLI. Goodbye!"));
+      echo(brightGreen("Thank you for using Switch CLI. Goodbye!"));
       Deno.exit(0);
     }
 
-    console.log(white("\nExecuting command: ") + yellow(input) + "\n");
-    await runCommand(input);
+    echo(brightWhite("\nExecuting command: ") + brightWhite(input) + "\n");
+    await runSwitchCommand(input);
   }
 }
 

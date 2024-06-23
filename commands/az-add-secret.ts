@@ -1,5 +1,5 @@
 import { Command } from "../types.ts";
-import { title, echo, error } from "../cli.ts";
+import { runShellCommand, title, echo, error, } from "../cli.ts";
 
 const addSecretCommand: Command = {
   name: "add-secret",
@@ -18,46 +18,16 @@ const addSecretCommand: Command = {
     const vaultName = args["vault-name"];  //todo: could be deduced from the context?
     const secretName = args.name;
     const secretValue = args.value;
-
     if (!vaultName || !secretName || !secretValue) {
       error("Missing required arguments. Use --help for usage information.");
       return;
     }
 
     title(`Adding secret to Azure Key Vault: ${vaultName}`);
-
-    try {
-      const process = new Deno.Command("az", {
-        args: [
-          "keyvault",
-          "secret",
-          "set",
-          "--vault-name",
-          vaultName as string,  //todo: could be deduced from the context?
-          "--name",
-          secretName as string,
-          "--value",
-          secretValue as string,
-        ],
-        stdout: "piped",
-        stderr: "piped",
-      });
-
-      const { code, stdout, stderr } = await process.output();
-
-      if (code === 0) {
-        const result = JSON.parse(new TextDecoder().decode(stdout));
-        echo("Secret added successfully:");
-        echo(`Name: ${result.name}`);
-        echo(`Vault: ${result.vaultUri}`);
-        echo(`Creation Date: ${result.properties.created}`);
-      } else {
-        const errorMessage = new TextDecoder().decode(stderr);
-        error(`Azure CLI command failed: ${errorMessage}`);
-      }
-    } catch (e) {
-      error(`Failed to execute Azure CLI command: ${e.message}`);
-    }
+    const result = await runShellCommand("az",
+      ["keyvault", "secret", "set", "--vault-name", vaultName as string, "--name", secretName as string, "--value", secretValue as string],
+      "Secret added successfully",
+      `'az' is not installed or you're not logged in.`);
   }
 };
 

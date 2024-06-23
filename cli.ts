@@ -1,5 +1,5 @@
 import { parse } from "https://deno.land/std@0.181.0/flags/mod.ts";
-import { cyan, bold, white, red, yellow, green, blue } from "https://deno.land/std@0.181.0/fmt/colors.ts";
+import { cyan, bold, white, red, yellow } from "https://deno.land/std@0.181.0/fmt/colors.ts";
 import { Command } from "./types.ts";
 
 export const standardOptions = [
@@ -14,10 +14,14 @@ export const standardOptions = [
   { name: "skip-tickets", description: "Skip creating an onboarding ticket for Cloud Engineering team.", type: "boolean" },
 ];
 
+export const title = (message: string): void => echo(cyan(bold(`\n${message}\n`)));
+export const echo = (message: string): void => echo(white(message));
+export const error = (message: string): void => echo(red(message));
+
 export const printStandardOptionsHelp = (): void => {
-  console.log("Standard options:");
+  echo("Standard options:");
   for (const option of standardOptions) {
-    console.log(`  --${option.name}\t${option.description}`);
+    echo(`  --${option.name}\t${option.description}`);
   }
 };
 
@@ -63,21 +67,49 @@ export const discoverCommands = async (): Promise<Command[]> => {
         const command = await loadCommand(commandName);
         commands.push(command);
       } catch (error) {
-        console.error(`Error loading command ${commandName}: ${error.message}`);
+        error(`Error loading command ${commandName}: ${error.message}`);
       }
     }
   }
-
   return commands;
-};
+};        
 
-export const executeCommand = async (command: Command, args: Record<string, unknown>): Promise<void> => {
-  await command.execute(args);
-};
+export async function runShellCommand(command: string, args: string[], successMsg?: string, errorMsg?: string): Promise<boolean> {
+  const process = new Deno.Command(command, {
+    args,
+    stdout: "piped",
+    stderr: "piped",
+  });
 
-export const title = (message: string): void => console.log(cyan(bold(`\n${message}\n`)));
-export const echo = (message: string): void => console.log(white(message));
-export const error = (message: string): void => console.log(red(message));
+  const { code, stdout, stderr } = await process.output();
+  try {
+    if (code === 0) {
+      echo(successMsg ? `${successMsg}\n` : `${new TextDecoder().decode(stdout).trim()}\n`);
+      return true;
+    }
+    error(errorMsg ? errorMsg : `Shell Command ${command} failed: ${new TextDecoder().decode(stderr)}`);
+  }
+  catch (e) {
+    error(errorMsg ? errorMsg : `Shell Command ${command} error: ${e.message}`);
+  }
+  return false;
+}
+
+export async function runSwitchCommand(input: string): Promise<boolean> {  
+  try {
+    const args = parse(input.split(' '), {
+      boolean: ["help"],
+      alias: { h: "help" },
+    });
+    const commandName = args.help ? "help" : (args._[0] as string) || "default";
+    const command = await loadCommand(commandName);
+    await command.execute(args);
+  } catch (err) {
+    error(red(`Switch Command "${input}" error: ${err.message}`));
+    return false;
+  }
+  return true;
+}
 
 export const confirm = (message: string): boolean => {
   const response = prompt(yellow(`${message} (y/n)`));
@@ -85,9 +117,9 @@ export const confirm = (message: string): boolean => {
 };
 
 export const select = (message: string, options: string[]): string => {
-  console.log(yellow(message));
+  echo(yellow(message));
   options.forEach((option, index) => {
-    console.log(`${index + 1}. ${option}`);
+    echo(`${index + 1}. ${option}`);
   });
   const response = prompt(yellow("Enter your choice (number):"));
   const index = parseInt(response || "", 10) - 1;
