@@ -34,7 +34,7 @@ export const parseArgs = (args: string[]): Record<string, unknown> => {
   });
 };
 
-export const loadCommand = async (commandName: string): Promise<Command> => {
+const loadCommand = async (commandName: string): Promise<Command> => {
   const commandsDir = "commands";
   const commandFile = `${commandsDir}/${commandName}.ts`;
 
@@ -84,7 +84,7 @@ export async function runShellCommand(command: string, args: string[], successMs
   const { code, stdout, stderr } = await process.output();
   try {
     if (code === 0) {
-      console.log(successMsg ? `${successMsg}\n` : `${new TextDecoder().decode(stdout).trim()}\n`);
+      if (successMsg) console.log(successMsg ? `${successMsg}\n` : `${new TextDecoder().decode(stdout).trim()}\n`);
       return true;
     }
     error(errorMsg ? errorMsg : `Shell Command ${command} failed: ${new TextDecoder().decode(stderr)}`);

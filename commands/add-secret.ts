@@ -24,7 +24,7 @@ const addSecretCommand: Command = {
     }
 
     title(`Adding secret to Azure Key Vault: ${vaultName}`);
-    const result = await runShellCommand("az",
+    await runShellCommand("az",
       ["keyvault", "secret", "set", "--vault-name", vaultName as string, "--name", secretName as string, "--value", secretValue as string],
       "Secret added successfully",
       `'az' is not installed or you're not logged in.`);
