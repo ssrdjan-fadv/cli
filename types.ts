@@ -1,7 +1,17 @@
+// export type Command = {
+//   name: string;
+//   description: string;
+//   execute: (args: Record<string, unknown>) => Promise<void>;
+// };
+
 export type Command = {
   name: string;
   description: string;
+  // execute: (args: string[]) => Promise<void>;
   execute: (args: Record<string, unknown>) => Promise<void>;
+  usage?: string;
+  options?: Array<{ flags: string; description: string }>;
+  examples?: string[];
 };
 
 export type Result<T> = { ok: boolean; value: T };
