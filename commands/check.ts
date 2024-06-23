@@ -6,7 +6,7 @@ async function ensureCliDependencies(): Promise<boolean> {
   const checks = [
     await runShellCommand("git", ["--version"], '', `${bold('git')} is not installed or you're not logged in.`),
     await runShellCommand("gh", ["auth", "status"], '', `${bold('gh')} is not installed or you're not logged in.`),
-    await runShellCommand("az", ["account", "show"], '', `${bold('az')} is not installed or you're not logged in.`),
+    // await runShellCommand("az", ["account", "show"], '', `${bold('az')} is not installed or you're not logged in.`),
   ];
 
   // Use `Promise.all` to wait for all checks to complete, if any of the checks failed, return false
@@ -17,6 +17,7 @@ async function ensureCliDependencies(): Promise<boolean> {
   }
   return true;
 }
+
 const switchCheckCommand: Command = {
   name: "check",
   description: "Performs a system check to locate required dependencies",
