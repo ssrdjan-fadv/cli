@@ -11,7 +11,7 @@ async function ensureCliDependencies(): Promise<boolean> {
 
   // Use `Promise.all` to wait for all checks to complete, if any of the checks failed, return false
   const results = await Promise.all(checks);
-  if (results.includes(false)) {
+  if (results.some(result => !result.ok)) {
     echo(`\n${results}`)
     return false;
   }

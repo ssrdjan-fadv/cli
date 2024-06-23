@@ -12,7 +12,8 @@ const dirCommand: Command = {
       return;
     }
     title("Folder Content");
-    await runShellCommand("ls", ["-la"]);
+    const result = await runShellCommand("ls", ["-la"]);
+    echo(result.value)
   }
 };
 

@@ -1,8 +1,9 @@
-import { Command, SwitchConfig, DefaultSwitchConfig, FileError, escape, AppType, EnvironmentType, PromptFunction, ArrayKV } from "../types.ts";
+import { Command, SwitchConfig, DefaultSwitchConfig, FileError, escape, AppType, EnvironmentType } from "../types.ts";
 import { basename, join } from "https://deno.land/std@0.181.0/path/mod.ts";
 import { stringify } from "https://deno.land/std@0.207.0/yaml/mod.ts";
-import { confirm, echo, title, numberInput, select, runShellCommand } from "../cli.ts";
+import { confirm, echo, title, numberInput, select, runShellCommand, stringInput } from "../cli.ts";
 import { exists, loadConfig, listFiles, cloneTemplate, templateFill } from "../utils/fs.ts";
+import { bold } from "https://deno.land/std@0.181.0/fmt/colors.ts";
 import path from 'node:path';
 import os from 'node:os';
 
@@ -14,6 +15,26 @@ const DEFAULT_LOCAL_TEMPLATE_PATH = path.join(basename(Deno.cwd()), "templates")
 
 const getTemplatePath = () => Deno.statSync(DEFAULT_HOME_TEMPLATE_PATH).isDirectory ?
                                 DEFAULT_HOME_TEMPLATE_PATH : DEFAULT_LOCAL_TEMPLATE_PATH;
+
+async function getGitOriginUrl(): Promise<string | null> {
+  const result = await runShellCommand("git", ["remote", "-v"], '', `Local  ${bold('git remote -v')} error.`);
+  const lines = result.value.trim().split("\n");
+  if (lines.length > 0) {
+    const match = lines[0].match(/origin\s+(.*?)\s+\(fetch\)/);
+    if (match && match[1]) {
+      return match[1];
+    }
+  }
+  return null;
+}
+
+// Usage example
+const originUrl = await getGitOriginUrl();
+if (originUrl) {
+  console.log("Git origin URL:", originUrl);
+} else {
+  console.log("Could not retrieve Git origin URL");
+}
 
 const copyTemplateFiles = async (projectFolder: string, tmpFolder: string): Promise<void> => {
   for (const dir of TEMPLATE_DIRS) {
@@ -127,7 +148,6 @@ const createIssue = async (repo: string, title: string, body: string, label: str
 
 // Get the list of GitHub organizations 
 const orgList = async (): Promise<string[]> => {
-
   const command = new Deno.Command("gh", {
     args: ["org", "list"],
     stdout: "piped",
@@ -194,8 +214,7 @@ const collectIfMissing = async (
   if (keys.length === 0) keys = Object.keys(target);
   for (const key of keys) {
     if (key in target &&
-      target[key] === undefined &&
-      prompts[key]) {
+      target[key] === undefined && prompts[key]) {
       const value = await prompts[key](inputConfig);
       Object.assign(target, { [key]: value });
     }
@@ -253,10 +272,14 @@ const autoRegisterEnv = (
   }
 };
 
+type PromptFunction = (config?: SwitchConfig) => string | number | boolean;
 const prompts: Record<string, PromptFunction> = {
-  port: async (config?: SwitchConfig) => config?.type === AppType.ContainerApp
-    ? await numberInput(`Please provide the port your service will be running`)
+  port: (config?: SwitchConfig) => config?.type === AppType.ContainerApp
+    ? numberInput(`Please provide the port your service will be running`)
     : undefined,
+  skipTickets: () => confirm("Skip creating an onboarding ticket for Cloud Engineering team?"),
+  repository: () => stringInput('Enter current repository name'),
+
 };
 
 const switchInitCommand: Command = {

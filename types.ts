@@ -9,7 +9,6 @@ export type ObjectType = Record<string, unknown>;
 export type Value = Primitive | ObjectType | Array<Primitive | ObjectType>;
 export type StringArray = string[];
 export type Arguments = Record<string, unknown>[];
-
 export type ArrayKV = Array<{ name: string; value: Value }>;
 
 export const isPrimitive = (value: unknown): boolean => 
@@ -25,7 +24,6 @@ export const enumAsTable = (T: Value): ArrayKV =>
   Object.entries(T).map(([key, value]) => ({ name: key, value }));
 
 export type FileError = { file: string; error: Error };
-export type PromptFunction = (config?: SwitchConfig) => Promise<Value>;
 
 export const escape = (s: unknown): string => String(s)
   .replace(/[\\&'"><]/g, char => ({
@@ -36,6 +34,8 @@ export const escape = (s: unknown): string => String(s)
     '<': '\\x3C',
     '>': '\\x3E'
   }[char] || char));
+
+export type Result<T> = { ok: boolean; value: T };
 
 export type SwitchConfig = {
   domain?: DomainType;

@@ -12,7 +12,8 @@ const gitStatusCommand: Command = {
       return;
     }
     title("Git Status");
-    await runShellCommand("git", ["status"]);
+    const result = await runShellCommand("git", ["status"]);
+    echo(result.value)
   }
 };
 
