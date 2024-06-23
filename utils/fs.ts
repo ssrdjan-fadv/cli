@@ -1,13 +1,20 @@
 import { Eta } from "https://deno.land/x/eta@v3.1.1/src/index.ts";
 import { join, dirname } from "https://deno.land/std@0.207.0/path/mod.ts";
-import { parse, stringify } from "https://deno.land/std@0.207.0/yaml/mod.ts";
-import { FileError, StringArray } from "../types.ts";
-import { copy } from "https://deno.land/std@0.181.0/fs/mod.ts";
+import { parse } from "https://deno.land/std@0.207.0/yaml/mod.ts";
+
+type FileError = { file: string; error: Error };
 
 // Debug function to log messages when DEBUG environment variable is set to 'true'
-const debug = (...args: unknown[]): void => {
+const debug = (header: string='', args?: string | string[]): void => {
   if (Deno.env.get("DEBUG") === "true") {
-    echo(...args);
+    console.log(header);
+    if (args) {
+      if (typeof args === "string") {
+        console.log(`  ${args}`);
+      } else {
+        args.forEach((arg, index) => console.log(`  ${index + 1}. ${arg}`));
+      }
+    }
   }
 };
 
@@ -53,7 +60,7 @@ const getRelativeFilePath = (srcPath: string, srcFile: string): string => {
 };
 
 // Fill template files with provided data
-export const templateFill = async (fileNames: StringArray, payload: unknown): Promise<FileError[]> => {
+export const templateFill = async (fileNames: string[], payload: unknown): Promise<FileError[]> => {
   const failedFiles: FileError[] = [];
   const eta = new Eta({});
 
@@ -121,18 +128,6 @@ export const loadConfig = async <T>(file: string): Promise<T | undefined> => {
     return parse(content) as T;
   }
   return undefined;
-};
-
-// Save config to a YAML file
-const _saveConfig = async (folder: string, config: unknown): Promise<void> => {
-  const filePath = join(folder, 'Switchfile');
-  const yamlString = stringify(config);
-  await Deno.writeTextFile(filePath, yamlString);
-};
-
-// Recursively copy files from source to destination
-const _copyFiles = async (source: string, destination: string): Promise<void> => {
-  await copy(source, destination, { overwrite: true });
 };
 
 // Recursively copy files from source to destination

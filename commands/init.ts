@@ -1,4 +1,4 @@
-import { Command, SwitchConfig, DefaultSwitchConfig, FileError, escape, AppType, EnvironmentType } from "../types.ts";
+import { Command, SwitchConfig, FileError, AppType, EnvironmentType } from "../types.ts";
 import { basename, join } from "https://deno.land/std@0.181.0/path/mod.ts";
 import { stringify } from "https://deno.land/std@0.207.0/yaml/mod.ts";
 import { confirm, echo, title, numberInput, select, runShellCommand, stringInput } from "../cli.ts";
@@ -15,6 +15,16 @@ const DEFAULT_LOCAL_TEMPLATE_PATH = path.join(basename(Deno.cwd()), "templates")
 
 const getTemplatePath = () => Deno.statSync(DEFAULT_HOME_TEMPLATE_PATH).isDirectory ?
                                 DEFAULT_HOME_TEMPLATE_PATH : DEFAULT_LOCAL_TEMPLATE_PATH;
+
+const escape = (s: unknown): string => String(s)
+  .replace(/[\\&'"><]/g, char => ({
+    '\\': '\\\\',
+    '&': '\\x26',
+    "'": '\\x27',
+    '"': '\\x22',
+    '<': '\\x3C',
+    '>': '\\x3E'
+  }[char] || char));
 
 async function getGitOriginUrl(): Promise<string | null> {
   const result = await runShellCommand("git", ["remote", "-v"], '', `Local  ${bold('git remote -v')} error.`);
@@ -287,9 +297,8 @@ const switchInitCommand: Command = {
   description: "Enables your current project(folder) for the Switch Platform.",
   execute: async (args: Record<string, unknown>) => {
     const projectFolder = ".";
-    const inputs: SwitchConfig = { ...DefaultSwitchConfig, name: basename(Deno.cwd()) };
+    const inputs: SwitchConfig = { name: basename(Deno.cwd()), repository: "", hooks: {} };
     title(`Project: ${inputs.name}`);
-
     const currentConfig = await loadConfig<SwitchConfig>(join(projectFolder, "Switchfile"));
     if (currentConfig) {
       const overwrite = await confirm("This project/folder is already enabled with Switch. Overwrite configuration?");

@@ -74,7 +74,7 @@ export async function runShellCommand(command: string, args: string[], successMs
 export async function runSwitchCommand(input: string): Promise<boolean> {  
   try {
     const args = parse(input.split(' '), { boolean: ["help"], alias: { h: "help" }});
-    const commandName = args.help ? "help" : (args._[0] as string) || "default";
+    const commandName = args.help ? "help" : (args._[0] as string);
     const command = await loadCommand(commandName);
     await command.execute(args);
   } catch (err) {
