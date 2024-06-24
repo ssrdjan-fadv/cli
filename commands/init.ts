@@ -4,17 +4,19 @@ import { stringify } from "https://deno.land/std@0.207.0/yaml/mod.ts";
 import { confirm, echo, title, numberInput, select, runShellCommand, stringInput } from "../cli.ts";
 import { exists, loadConfig, listFiles, cloneTemplate, templateFill } from "../utils/fs.ts";
 import { bold, green, red } from "https://deno.land/std@0.181.0/fmt/colors.ts";
-import path from 'node:path';
-import os from 'node:os';
 
 const TEMPLATE_DIRS = ['.github', 'scripts'];
 const SONAR_FILE = 'sonar-project.properties';
 const DEFAULT_TEMPLATE_REPOSITORY = "FA-Switch-Platform/Switch-CICD-Template";
-const DEFAULT_HOME_TEMPLATE_PATH = path.join(os.homedir() || "", ".switch-cli", "templates");
-const DEFAULT_LOCAL_TEMPLATE_PATH = path.join(basename(Deno.cwd()), "templates");
+const DEFAULT_HOME_TEMPLATE_PATH = Deno.env.get("HOME") ? join(Deno.env.get("HOME") || "", ".switch-cli", "templates") : "";
+const DEFAULT_LOCAL_TEMPLATE_PATH = join(basename(Deno.cwd()), "templates");
 
-const getTemplatePath = () => Deno.statSync(DEFAULT_HOME_TEMPLATE_PATH).isDirectory ?
-  DEFAULT_HOME_TEMPLATE_PATH : DEFAULT_LOCAL_TEMPLATE_PATH;
+const getTemplatePath = () => {
+  if (DEFAULT_HOME_TEMPLATE_PATH && Deno.statSync(DEFAULT_HOME_TEMPLATE_PATH).isDirectory) {
+    return DEFAULT_HOME_TEMPLATE_PATH;
+  }
+  return DEFAULT_LOCAL_TEMPLATE_PATH;
+};
 
 const escape = (s: unknown): string => String(s)
   .replace(/[\\&'"><]/g, char => ({
@@ -26,7 +28,7 @@ const escape = (s: unknown): string => String(s)
     '>': '\\x3E'
   }[char] || char));
 
-async function getGitOriginUrl(): Promise<string | null> {
+const getGitOriginUrl = async (): Promise<string | null> => {
   const result = await runShellCommand("git", ["remote", "-v"], '', `Local  ${bold('git remote -v')} error.`);
   const lines = result.value.trim().split("\n");
   if (lines.length > 0) {
@@ -36,7 +38,7 @@ async function getGitOriginUrl(): Promise<string | null> {
     }
   }
   return null;
-}
+};
 
 const copyTemplateFiles = async (projectFolder: string, tmpFolder: string): Promise<void> => {
   for (const dir of TEMPLATE_DIRS) {
@@ -79,7 +81,7 @@ const showNextSteps = (): void => {
 
 const cloneRepository = async (repo: string, branch = "main", destinationFolder = ""): Promise<string[]> => {
   const result = await runShellCommand('gh', ["repo", "clone", repo, destinationFolder, "--", "-b", branch], `Failed to clone repository: ${repo}`);
-  if (result) {
+  if (result.ok) {
     await Deno.remove(join(destinationFolder, ".git"), { recursive: true });
     return listFiles(destinationFolder);
   }
@@ -141,7 +143,7 @@ const createIssue = async (repo: string, title: string, body: string, label: str
   await runShellCommand('gh',
     ['issue', "create", "--repo", repo, "--title", title, "--body", body, "--label", label],
     `Issue created successfully`,
-    `Failed to clone repository: ${repo}`);
+    `Failed to create issue in repository: ${repo}`);
 };
 
 const orgList = async (): Promise<string[]> => {
@@ -278,6 +280,64 @@ const prompts: Record<string, PromptFunction> = {
   repository: () => stringInput('Enter current repository name'),
 };
 
+const showInitHelp = (command: Command) => {
+  echo(`Usage: ${command.usage}`);
+  echo(command.description);
+  echo("\nOptions:");
+  command.options?.forEach(option => {
+    echo(`  ${option.flags.padEnd(30)} ${option.description}`);
+  });
+  echo("\nExamples:");
+  command.examples?.forEach(example => {
+    echo(`  ${example}`);
+  });
+  echo("\nThis command initializes your current project for the Switch Platform, setting up necessary configurations and files.");
+};
+
+const executeInit = async (args: Record<string, unknown>) => {
+  if (
+    args.help === true ||
+    args.h === true ||
+    (Array.isArray(args._) && (args._.includes("help") || args._.includes("--help")))
+  ) {
+    showInitHelp(switchInitCommand);
+    return;
+  }
+
+  const projectFolder = ".";
+  const inputs: SwitchConfig = { name: basename(Deno.cwd()), repository: "", hooks: {} };
+  title(`Project: ${inputs.name}`);
+
+  const currentConfig = await loadConfig<SwitchConfig>(join(projectFolder, "Switchfile"));
+  if (currentConfig) {
+    const overwrite = await confirm("This project/folder is already enabled with Switch. Overwrite configuration?");
+    if (!overwrite) {
+      echo(red("Operation cancelled by user."));
+      Deno.exit(1);
+    }
+  }
+
+  const tmpFolder = await Deno.makeTempDir();
+  try {
+    await validateStandardConfig(inputs, args, currentConfig);
+    await pullTemplate(inputs, args.base as string, args.branch as string, tmpFolder);
+    await copyTemplateFiles(projectFolder, tmpFolder);
+    await saveConfig(projectFolder, inputs);
+
+    if (!args.skipTickets) {
+      await createOnboardingTicket(inputs);
+    }
+
+    showNextSteps();
+    echo(green("\n✔ Project successfully initialized for Switch Platform"));
+  } catch (error) {
+    echo(red(`\n❌ Error initializing project: ${error.message}`));
+    Deno.exit(1);
+  } finally {
+    await Deno.remove(tmpFolder, { recursive: true });
+  }
+};
+
 const switchInitCommand: Command = {
   name: "init",
   description: "Enables your current project (folder) for the Switch Platform.",
@@ -294,63 +354,7 @@ const switchInitCommand: Command = {
     "switch init --base FA-Switch-Platform/Custom-Template --branch develop",
     "switch init --skip-tickets --github-org MyOrg",
   ],
-  execute: async (args: Record<string, unknown>) => {
-    if (
-      args.help === true ||
-      args.h === true ||
-      (Array.isArray(args._) && (args._.includes("help") || args._.includes("--help")))
-    ) {
-      showInitHelp();
-      return;
-    }
-
-    const projectFolder = ".";
-    const inputs: SwitchConfig = { name: basename(Deno.cwd()), repository: "", hooks: {} };
-    title(`Project: ${inputs.name}`);
-
-    const currentConfig = await loadConfig<SwitchConfig>(join(projectFolder, "Switchfile"));
-    if (currentConfig) {
-      const overwrite = await confirm("This project/folder is already enabled with Switch. Overwrite configuration?");
-      if (!overwrite) {
-        echo(red("Operation cancelled by user."));
-        Deno.exit(1);
-      }
-    }
-
-    const tmpFolder = await Deno.makeTempDir();
-    try {
-      await validateStandardConfig(inputs, args, currentConfig);
-      await pullTemplate(inputs, args.base as string, args.branch as string, tmpFolder);
-      await copyTemplateFiles(projectFolder, tmpFolder);
-      await saveConfig(projectFolder, inputs);
-
-      if (!args.skipTickets) {
-        await createOnboardingTicket(inputs);
-      }
-
-      showNextSteps();
-      echo(green("\n✔ Project successfully initialized for Switch Platform"));
-    } catch (error) {
-      echo(red(`\n❌ Error initializing project: ${error.message}`));
-      Deno.exit(1);
-    } finally {
-      await Deno.remove(tmpFolder, { recursive: true });
-    }
-  },
+  execute: executeInit,
 };
-
-function showInitHelp() {
-  echo(`Usage: ${switchInitCommand.usage}`);
-  echo(switchInitCommand.description);
-  echo("\nOptions:");
-  switchInitCommand.options?.forEach(option => {
-    echo(`  ${option.flags.padEnd(30)} ${option.description}`);
-  });
-  echo("\nExamples:");
-  switchInitCommand.examples?.forEach(example => {
-    echo(`  ${example}`);
-  });
-  echo("\nThis command initializes your current project for the Switch Platform, setting up necessary configurations and files.");
-}
 
 export default switchInitCommand;

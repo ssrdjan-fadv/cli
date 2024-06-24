@@ -51,38 +51,37 @@ export const discoverCommands = async (): Promise<Command[]> => {
     }
   }
   return commands;
-};        
+};
 
-export async function runShellCommand(command: string, args: string[], successMsg?: string, errorMsg?: string): Promise<Result<string>> {
-  let finalErrorMsg = '';
-
+export const runShellCommand = async (command: string, args: string[], successMsg?: string, errorMsg?: string): Promise<Result<string>> => {
   try {
     const process = new Deno.Command(command, { args, stdout: "piped", stderr: "piped", });
     const { code, stdout, stderr } = await process.output();
     if (code === 0) {
-      return { ok: true, value: successMsg ? `${successMsg}\n` : `${new TextDecoder().decode(stdout).trim()}\n`  };
+      return { ok: true, value: successMsg ? `${successMsg}\n` : `${new TextDecoder().decode(stdout).trim()}\n` };
     }
-    finalErrorMsg = errorMsg || `Shell Command ${command} failed: ${new TextDecoder().decode(stderr) }`;
+    const finalErrorMsg = errorMsg || `Shell Command ${command} failed: ${new TextDecoder().decode(stderr)}`;
     console.error(finalErrorMsg);
+    return { ok: false, value: finalErrorMsg };
   } catch (e) {
-    finalErrorMsg = errorMsg || `Shell Command ${command} error: ${e instanceof Error ? e.message : String(e)}`;
+    const finalErrorMsg = errorMsg || `Shell Command ${command} error: ${e instanceof Error ? e.message : String(e)}`;
     console.error(finalErrorMsg);
+    return { ok: false, value: finalErrorMsg };
   }
-  return { ok: false, value: finalErrorMsg };
-}
+};
 
-export async function runSwitchCommand(input: string): Promise<boolean> {  
+export const runSwitchCommand = async (input: string): Promise<boolean> => {
   try {
-    const args = parse(input.split(' '), { boolean: ["help"], alias: { h: "help" }});
+    const args = parse(input.split(' '), { boolean: ["help"], alias: { h: "help" } });
     const commandName = args.help ? "help" : (args._[0] as string);
     const command = await loadCommand(commandName);
     await command.execute(args);
+    return true;
   } catch (err) {
     error(red(`Switch Command "${input}" error: ${err.message}`));
     return false;
   }
-  return true;
-}
+};
 
 export const confirm = (message: string): boolean => {
   const response = prompt(yellow(`${message} (y/n)`));

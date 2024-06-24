@@ -1,13 +1,6 @@
-// export type Command = {
-//   name: string;
-//   description: string;
-//   execute: (args: Record<string, unknown>) => Promise<void>;
-// };
-
 export type Command = {
   name: string;
   description: string;
-  // execute: (args: string[]) => Promise<void>;
   execute: (args: Record<string, unknown>) => Promise<void>;
   usage?: string;
   options?: Array<{ flags: string; description: string }>;
@@ -28,7 +21,7 @@ export type SwitchConfig = {
   port?: number;
 };
 
-type HookConfig = {
+export type HookConfig = {
   command?: string;
   type?: string;
 };
@@ -40,11 +33,13 @@ export type Hooks = {
   "db-migration"?: HookConfig;
   env?: HookConfig;
 };
+
 export enum AppType {
   Function = "fa",
   StaticWebApp = "swa",
   ContainerApp = "aca",
 }
+
 export enum EnvironmentType {
   Development = "dev",
   CI = "ci",
@@ -53,6 +48,7 @@ export enum EnvironmentType {
   CustomerTest = "ct",
   Production = "prod",
 }
+
 export type FileError = { file: string; error: Error };
 
 export type EnvironmentConfig = {
