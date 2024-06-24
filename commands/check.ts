@@ -4,15 +4,16 @@ import { red, bold, green } from "https://deno.land/std@0.181.0/fmt/colors.ts";
 
 async function ensureCliDependencies(): Promise<boolean> {
   const checks = [
-    await runShellCommand("git", ["--version"], '', `${bold('git')} is not installed or you're not logged in.`),
-    await runShellCommand("gh", ["auth", "status"], '', `${bold('gh')} is not installed or you're not logged in.`),
-    // await runShellCommand("az", ["account", "show"], '', `${bold('az')} is not installed or you're not logged in.`),
+    () => runShellCommand("git", ["--version"], '', `${bold('git')} is not installed or you're not logged in.`),
+    () => runShellCommand("gh", ["auth", "status"], '', `${bold('gh')} is not installed or you're not logged in.`),
+    () => runShellCommand("az", ["account", "show"], '', `${bold('az')} is not installed or you're not logged in.`),
   ];
 
-  const results = await Promise.all(checks);
-  if (results.some(result => !result.ok)) {
-    echo(`\n${results.filter(result => !result.ok).map(result => result.value).join('\n')}`);
-    return false;
+  for (let i = 0; i < checks.length; i++) {
+    const result = await checks[i]();
+    if (!result.ok) {
+      return false;
+    }
   }
   return true;
 }
@@ -40,7 +41,7 @@ const switchCheckCommand: Command = {
     title("Checking System Configuration");
     const allDependenciesInstalled = await ensureCliDependencies();
     if (allDependenciesInstalled) {
-      echo(green("\n👍 Excellent! All required CLIs are installed and configured."));
+      echo(green("\n👍 Excellent! All required Switch CLI dependencies are installed and configured."));
     } else {
       echo(red("\n⚠️  Critical dependencies are missing. Please install them, make sure you can login and try again.\n"));
       Deno.exit(1);
@@ -62,7 +63,7 @@ function showCheckHelp() {
   echo("\nThis command checks for the following dependencies:");
   echo("  - git: Version control system");
   echo("  - gh: GitHub CLI tool");
-  // echo("  - az: Azure CLI tool");
+  echo("  - az: Azure CLI tool");
 }
 
 export default switchCheckCommand;
